@@ -16,10 +16,14 @@ app.canvas.style.position = "absolute";
 
 const maxHeight = window.innerHeight - 5;
 const maxWidht = window.innerWidth - 5;
-const speed = 10;
-const faster = 5;
+const speed = 3;
+let p1velocityX = 0;
+let p1velocityY = 0;
+let speedmodifier = 1
 
 app.ticker.add(() => {
+    rectangle.x += p1velocityX * speedmodifier;
+    rectangle.y += p1velocityY * speedmodifier;
     if (rectangle.x < 0){
         rectangle.x = maxWidht / 2 - rectangle.width / 2;
     }
@@ -31,22 +35,36 @@ app.ticker.add(() => {
     }
     if (rectangle.y > maxHeight- rectangle.height){
         rectangle.y = maxHeight/2 - rectangle.height/2;
-    }
-    
+    } 
 });
 
 window.addEventListener("keydown", (event)=>{
     if(event.key === "ArrowUp"){
-        rectangle.y -= speed;
+        p1velocityY = -speed;
     }
-    if(event.key === "ArrowDown"){
-        rectangle.y += speed;
+    if(event.key === "ArrowDown"){        
+        p1velocityY = speed;
     }
-    if(event.key === "ArrowLeft"){
-        rectangle.x -= speed;
+    if(event.key === "ArrowLeft"){        
+        p1velocityX = -speed;
     }
-    if(event.key === "ArrowRight"){
-        rectangle.x += speed;
+    if(event.key === "ArrowRight"){        
+        p1velocityX = speed;
+    }
+});
+
+window.addEventListener("keyup", (event)=>{
+    if(event.key === "ArrowUp"){        
+        p1velocityY = 0;
+    }
+    if(event.key === "ArrowDown"){        
+        p1velocityY = 0;
+    }
+    if(event.key === "ArrowLeft"){        
+        p1velocityX = 0;
+    }
+    if(event.key === "ArrowRight"){        
+        p1velocityX = 0;
     }
 });
 
@@ -69,7 +87,7 @@ const text = new Text({
 app.stage.addChild(text);
 
 const rectangle = new Graphics()
-    .rect(0, 0, 100, 125) //x,y,width,height
+    .rect(0, 0, 50, 75) //x,y,width,height
     .fill({
     color: 0xff0000,
     alpha: 0.9
@@ -82,8 +100,6 @@ app.stage.addChild(rectangle);
 
 const texture = await Assets.load('/images/sesu.png');
 const sprite = Sprite.from(texture);
-//sprite.width = 200;
-//sprite.height = 200;
 sprite.scale = 0.25
 sprite.position._x = 50;
 sprite.position._y = 50;
