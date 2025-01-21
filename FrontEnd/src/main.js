@@ -36,6 +36,12 @@ app.ticker.add(() => {
     if (rectangle.y > maxHeight- rectangle.height){
         rectangle.y = maxHeight/2 - rectangle.height/2;
     } 
+    if (isColliding(rectangle, sprite)) {
+        rectangle.color = 0x00ff00; // Change color on collision
+    }else {
+        rectangle.color = 0xff0000; // Reset color
+    }
+
 });
 
 window.addEventListener("keydown", (event)=>{
@@ -52,6 +58,14 @@ window.addEventListener("keydown", (event)=>{
         p1velocityX = speed;
     }
 });
+
+function isColliding(rect, spr){
+    const intersects = rect.x < spr.x + spr.width &&
+        rect.x + rect.width > spr.x &&
+        rect.y < spr.y + spr.height &&
+        rect.y + rect.height > spr.y;
+    return intersects;
+}
 
 window.addEventListener("keyup", (event)=>{
     if(event.key === "ArrowUp"){        
@@ -100,9 +114,9 @@ app.stage.addChild(rectangle);
 
 const texture = await Assets.load('/images/sesu.png');
 const sprite = Sprite.from(texture);
-sprite.scale = 0.25
-sprite.position._x = 50;
-sprite.position._y = 50;
+sprite.scale = 0.2
+sprite.position._x = 250;
+sprite.position._y = 250;
 app.stage.addChild(sprite);
 
 document.body.appendChild(app.canvas);
