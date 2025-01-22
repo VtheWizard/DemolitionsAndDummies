@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <canvas id="game" width="400" height="400" style="border:1px solid #000000;"></canvas>
+    <script>        
+        const socket = new WebSocket('ws://127.0.0.1:8080/ws');
+        
+        socket.onopen = () => {
+            console.log('connection established');
+        }
+    
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'w' || event.key === 'a' || event.key === 's' || event.key === 'd') {
+                console.log('Key pressed:', event.key);
+                socket.send(JSON.stringify({ player_moved: playerPosition}));
+            }
+        });
+
+        socket.onmessage = (event) => {
+            console.log("received: " + event.data);
+
+            const message = JSON.parse(event.data);
+
+            console.log(message)
+
+            if (message.type == "new_player_position") {
+                newLocation.row = message.position.x;
+                newLocation.col = message.position.y;
+                updatePlayer(playerPosition, newLocation)
+            }
+
+            if (message.type == "grid_init") {
+                initGrid(message.cells);
+            }
+
+        };
+
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
+
+        const cellSize = 40;
+
+        let playerPosition = { row: 0, col: 0 };
+        let newLocation = { row: 0, col: 0 }; // this data is from server
+
+        function initGrid(cells) {
+            console.log(cells)
+            for (let row = 0; row < cells.length; row++) {
+                for (let col = 0; col < cells[0].length; col++) {
+                    const x = col * cellSize;
+                    const y = row * cellSize;
+                    if (cells[row][col] === 1) {
+                        ctx.fillStyle = 'gray';
+                    } else {
+                        ctx.fillStyle = 'white';
+                    }
+
+                    ctx.fillRect(x, y, cellSize, cellSize);
+
+                    ctx.strokeStyle = 'black';
+                    ctx.strokeRect(x, y, cellSize, cellSize);
+                }
+            }
+        }
+
+        // initGrid();
+
+        function drawPlayer(row, col, radius, color) {
+            const centerX = col * cellSize + cellSize / 2;
+            const centerY = row * cellSize + cellSize / 2;
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // drawPlayer(0,0,10,"red");
+
+        function drawCell(row, col) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(row, col, cellSize, cellSize);
+            ctx.strokeStyle = 'black';
+            ctx.strokeRect(row, col, cellSize, cellSize);
+        }
+
+        function clearCell(row, col) {
+            const x = col * cellSize;
+            const y = row * cellSize;
+            ctx.clearRect(x, y, cellSize, cellSize);
+            drawCell(row, col);
+        }
+
+        function updatePlayer(playerPosition, newLocation) {
+            clearCell(playerPosition.row, playerPosition.col);
+
+            playerPosition.row = newLocation.row;
+            playerPosition.col = newLocation.col;
+            
+            drawPlayer(playerPosition.row, playerPosition.col, 10, "red"); 
+        }
+
+    </script>
+</body>
+</html>
