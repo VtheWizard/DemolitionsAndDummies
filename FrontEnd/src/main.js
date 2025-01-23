@@ -44,7 +44,7 @@ window.addEventListener("keydown", (event)=>{
 });
 
 window.addEventListener("keyup", (event)=>{
-    //player 1 on arrows and player 2 on wasd
+    //player 1 on arrows and player 2 on wasd, bomb drops are on v and p keys respectively
     switch (event.key) {
         case "ArrowUp": p1velocityY = 0; break;
         case "ArrowDown": p1velocityY = 0; break;
@@ -54,8 +54,27 @@ window.addEventListener("keyup", (event)=>{
         case "s": p2velocityY = 0; break;
         case "a": p2velocityX = 0; break;
         case "d": p2velocityX = 0; break;
+        case "p": localPlayerBombDrop(1);
+        case "v": localPlayerBombDrop(2);
     }
 });
+
+function localPlayerBombDrop(playerNumber) {
+    if (playerNumber === 1){
+        const bomb1 = new Sprite(Assets.get('/images/sesu.png'));
+        bomb1.position.set(Player1.x + 20, Player1.y + 20);
+        bomb1.anchor.set(0.5);
+        bomb1.scale = 0.02;
+        app.stage.addChild(bomb1);
+    }else{
+        const bomb2 = new Sprite(Assets.get('/images/sesu.png'));
+        bomb2.position.set(Player2.x + 20, Player2.y + 20);
+        bomb2.anchor.set(0.5);
+        bomb2.scale = 0.02;
+        app.stage.addChild(bomb2);
+    }
+}
+
 
 const style = new TextStyle({
     fontFamily: "Comic Sans MS",
@@ -76,7 +95,7 @@ const text = new Text({
 app.stage.addChild(text);
 
 const Player1 = new Graphics()
-    .rect(0, 0, 50, 75) //x,y,width,height
+    .rect(0, 0, 40, 40) //x,y,width,height
     .fill({
     color: 0xff0000,
     alpha: 0.9
@@ -88,7 +107,7 @@ const Player1 = new Graphics()
 app.stage.addChild(Player1);
 
 const Player2 = new Graphics()
-        .rect(0, 0, 50, 75) //x,y,width,height
+        .rect(0, 0, 40, 40) //x,y,width,height
         .fill({
         color: 0x00ff00,
         alpha: 0.9
@@ -108,23 +127,24 @@ sprite.position._y = 250;
 app.stage.addChild(sprite);
 
 //the grid
-const grid = new Graphics();
-    grid.lineStyle(3, 0x000000, 0.9);
-    for (let i = 0; i <= gridCols; i++) {
-        grid.moveTo(i * gridSize, 0);
-        grid.lineTo(i * gridSize, gridRows * gridSize);
-    }
-    for (let j = 0; j <= gridRows; j++) {
-        grid.moveTo(0, j * gridSize);
-        grid.lineTo(gridCols * gridSize, j * gridSize);
-    }
-app.stage.addChild(grid);
+/*for (let row = 0; row < gridRows; row++) {
+    for (let col = 0; col < gridColumns; col++) {
+        const square = new Graphics();
+        square.rect(0, 0, gridSize, gridSize);
+        square.Fill({
+            color: 0xffffff,
+            alpha: 0.9
+        })
+        .stroke({
+            color: 0x000000,
+            width: 1
+        });
 
-//borders
-const borders = new Graphics();
-    borders.lineStyle(4, 0x000000);
-    borders.drawRect(0, 0, gridCols, gridSize, gridRows * gridSize);
-app.stage.addChild(borders);
+        square.x = col * gridSize;
+        square.y = row * gridSize;
+        app.stage.addChild(square);
+    };
+};*/
 
 document.body.appendChild(app.canvas);
 
