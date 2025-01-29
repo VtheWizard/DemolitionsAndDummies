@@ -17,7 +17,7 @@ document.body.appendChild(app.canvas);
 
 const maxHeight = window.innerHeight - 5;
 const maxWidht = window.innerWidth - 5;
-const speed = 3;
+const speed = 1;
 const gridSpriteSize = 50;
 const gridSize = 10;
 let p1velocityX = 0;
@@ -26,6 +26,17 @@ let p2velocityX = 0;
 let p2velocityY = 0;
 let speedmodifier = 1;
 let localPlayerCount = 1;
+
+//the grid
+for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++){
+        const gridTexture = await Assets.load('/images/gridSpritePng.png');
+        const gridSprite = Sprite.from(gridTexture);
+        gridSprite.x = col * (gridSpriteSize + 1);
+        gridSprite.y = row * (gridSpriteSize + 1);
+        app.stage.addChild(gridSprite);
+    }
+}
 
 window.addEventListener("keydown", (event)=>{
     
@@ -96,7 +107,7 @@ const text = new Text({
 app.stage.addChild(text);
 
 const Player1 = new Graphics()
-    .rect(0, 0, 40, 40) //x,y,width,height
+    .rect(0, 0, 30, 30) //x,y,width,height
     .fill({
     color: 0xff0000,
     alpha: 0.9
@@ -108,7 +119,7 @@ const Player1 = new Graphics()
 app.stage.addChild(Player1);
 
 const Player2 = new Graphics()
-        .rect(0, 0, 40, 40) //x,y,width,height
+        .rect(0, 0, 30, 30) //x,y,width,height
         .fill({
         color: 0x00ff00,
         alpha: 0.9
@@ -126,17 +137,6 @@ sprite.scale = 0.2
 sprite.position._x = 250;
 sprite.position._y = 250;
 app.stage.addChild(sprite);
-
-//the grid
-for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++){
-        const gridTexture = await Assets.load('/images/gridSpritePng.png');
-        const gridSprite = Sprite.from(gridTexture);
-        gridSprite.x = col * gridSpriteSize + 1;
-        gridSprite.y = row * gridSpriteSize + 1;
-        app.stage.addChild(gridSprite);
-    }
-}
 
 document.body.appendChild(app.canvas);
 
