@@ -18,9 +18,8 @@ document.body.appendChild(app.canvas);
 const maxHeight = window.innerHeight - 5;
 const maxWidht = window.innerWidth - 5;
 const speed = 3;
-const gridSize = 50;
-const gridRows = 10;
-const gridCols = 10;
+const gridSpriteSize = 50;
+const gridSize = 10;
 let p1velocityX = 0;
 let p1velocityY = 0;
 let p2velocityX = 0;
@@ -61,17 +60,19 @@ window.addEventListener("keyup", (event)=>{
 
 function localPlayerBombDrop(playerNumber) {
     if (playerNumber === 1){
-        const bomb1 = new Sprite(Assets.get('/images/sesu.png'));
+        let bomb1 = new Sprite(Assets.get('/images/sesu.png'));
         bomb1.position.set(Player1.x + 20, Player1.y + 20);
         bomb1.anchor.set(0.5);
         bomb1.scale = 0.02;
         app.stage.addChild(bomb1);
     }else{
-        const bomb2 = new Sprite(Assets.get('/images/sesu.png'));
-        bomb2.position.set(Player2.x + 20, Player2.y + 20);
-        bomb2.anchor.set(0.5);
-        bomb2.scale = 0.02;
-        app.stage.addChild(bomb2);
+        if (playerNumber === 2){
+            let bomb2 = new Sprite(Assets.get('/images/sesu.png'));
+            bomb2.position.set(Player2.x + 20, Player2.y + 20);
+            bomb2.anchor.set(0.5);
+            bomb2.scale = 0.02;
+            app.stage.addChild(bomb2);
+        }
     }
 }
 
@@ -127,24 +128,15 @@ sprite.position._y = 250;
 app.stage.addChild(sprite);
 
 //the grid
-/*for (let row = 0; row < gridRows; row++) {
-    for (let col = 0; col < gridColumns; col++) {
-        const square = new Graphics();
-        square.rect(0, 0, gridSize, gridSize);
-        square.Fill({
-            color: 0xffffff,
-            alpha: 0.9
-        })
-        .stroke({
-            color: 0x000000,
-            width: 1
-        });
-
-        square.x = col * gridSize;
-        square.y = row * gridSize;
-        app.stage.addChild(square);
-    };
-};*/
+for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++){
+        const gridTexture = await Assets.load('/images/gridSpritePng.png');
+        const gridSprite = Sprite.from(gridTexture);
+        gridSprite.x = col * gridSpriteSize + 1;
+        gridSprite.y = row * gridSpriteSize + 1;
+        app.stage.addChild(gridSprite);
+    }
+}
 
 document.body.appendChild(app.canvas);
 
