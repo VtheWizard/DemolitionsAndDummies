@@ -107,7 +107,7 @@ const text = new Text({
 app.stage.addChild(text);
 
 const Player1 = new Graphics()
-    .rect(0, 0, 30, 30) //x,y,width,height
+    .rect(10, 10, 30, 30) //x,y,width,height
     .fill({
     color: 0xff0000,
     alpha: 0.9
@@ -119,7 +119,7 @@ const Player1 = new Graphics()
 app.stage.addChild(Player1);
 
 const Player2 = new Graphics()
-        .rect(0, 0, 30, 30) //x,y,width,height
+        .rect(470, 470, 30, 30) //x,y,width,height
         .fill({
         color: 0x00ff00,
         alpha: 0.9
