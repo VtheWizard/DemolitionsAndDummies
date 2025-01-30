@@ -15,11 +15,12 @@ app.stage.sortableChildren = true;
 app.canvas.style.position = "absolute";
 document.body.appendChild(app.canvas);
 
-const maxHeight = window.innerHeight - 5;
-const maxWidht = window.innerWidth - 5;
+
 const speed = 1;
 const gridSpriteSize = 50;
 const gridSize = 10;
+const maxHeight = gridSize * (gridSpriteSize + 1);
+const maxWidht = gridSize * (gridSpriteSize + 1);
 let p1velocityX = 0;
 let p1velocityY = 0;
 let p2velocityX = 0;
@@ -87,27 +88,8 @@ function localPlayerBombDrop(playerNumber) {
     }
 }
 
-
-const style = new TextStyle({
-    fontFamily: "Comic Sans MS",
-    fontSize: 34,
-    fill: 0xffffff,
-    stroke: 0x000000,
-    strokeThickness: 3
-});
-
-const text = new Text({
-    text: "window.width = " + maxWidht + " / window.height = " + maxHeight,
-    style: style,
-    position: {
-        x: 50,
-        y: 0
-    }
-});
-app.stage.addChild(text);
-
 const Player1 = new Graphics()
-    .rect(10, 10, 30, 30) //x,y,width,height
+    .rect(0, 0, 30, 30) //x,y,width,height
     .fill({
     color: 0xff0000,
     alpha: 0.9
@@ -117,9 +99,10 @@ const Player1 = new Graphics()
     width: 6
     });
 app.stage.addChild(Player1);
+Player1.position.set(10,10)
 
 const Player2 = new Graphics()
-        .rect(470, 470, 30, 30) //x,y,width,height
+        .rect(0, 0, 30, 30) //x,y,width,height
         .fill({
         color: 0x00ff00,
         alpha: 0.9
@@ -129,6 +112,7 @@ const Player2 = new Graphics()
         width: 6
         });
 app.stage.addChild(Player2);
+Player1.position.set(470,470)
 
 document.body.appendChild(app.canvas);
 
@@ -138,32 +122,32 @@ app.ticker.add(() => {
     Player1.x += p1velocityX * speedmodifier;
     Player1.y += p1velocityY * speedmodifier;
     if (Player1.x < 0){
-        Player1.x = maxWidht / 2 - Player1.width / 2;
+        Player1.x -= p1velocityX * speedmodifier;
     }
     if (Player1.x > maxWidht - Player1.width){
-        Player1.x = maxWidht / 2 - Player1.width / 2;
+        Player1.x -= p1velocityX * speedmodifier;
     }
     if (Player1.y < 0){
-        Player1.y = maxHeight/2 - Player1.height/2;
+        Player1.y -= p1velocityY * speedmodifier;
     }
     if (Player1.y > maxHeight- Player1.height){
-        Player1.y = maxHeight/2 - Player1.height/2;
+        Player1.y -= p1velocityY * speedmodifier;
     } 
 
     //player 2 movement
     Player2.x += p2velocityX * speedmodifier;
     Player2.y += p2velocityY * speedmodifier;
     if (Player2.x < 0){
-        Player2.x = maxWidht / 2 - Player2.width / 2;
+        Player2.x -= p2velocityX * speedmodifier;
     }
     if (Player2.x > maxWidht - Player2.width){
-        Player2.x = maxWidht / 2 - Player2.width / 2;
+        Player2.x -= p2velocityX * speedmodifier;
     }
     if (Player2.y < 0){
-        Player2.y = maxHeight/2 - Player2.height/2;
+        Player2.y = p2velocityY * speedmodifier;
     }
     if (Player2.y > maxHeight- Player2.height){
-        Player2.y = maxHeight/2 - Player2.height/2;
+        Player2.y -= p2velocityY * speedmodifier;
     } 
     
 });
