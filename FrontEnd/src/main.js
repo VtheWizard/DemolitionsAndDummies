@@ -130,14 +130,6 @@ const Player2 = new Graphics()
         });
 app.stage.addChild(Player2);
 
-//testing how to slap an image on a sprite        
-const texture = await Assets.load('/images/sesu.png');
-const sprite = Sprite.from(texture);
-sprite.scale = 0.2
-sprite.position._x = 250;
-sprite.position._y = 250;
-app.stage.addChild(sprite);
-
 document.body.appendChild(app.canvas);
 
     //ticker
