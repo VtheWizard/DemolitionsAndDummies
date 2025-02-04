@@ -18,7 +18,7 @@ document.body.appendChild(app.canvas);
 
 const speed = 1;
 const gridSpriteSize = 50;
-const gridSize = 10;
+const gridSize = 11;
 const maxHeight = gridSize * (gridSpriteSize + 1);
 const maxWidht = gridSize * (gridSpriteSize + 1);
 let p1velocityX = 0;
@@ -32,6 +32,16 @@ let localPlayerCount = 1;
 for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++){
         const gridTexture = await Assets.load('/images/gridSpritePng.png');
+        const gridSprite = Sprite.from(gridTexture);
+        gridSprite.x = col * (gridSpriteSize + 1);
+        gridSprite.y = row * (gridSpriteSize + 1);
+        app.stage.addChild(gridSprite);
+    }
+}
+//unbreakable walls
+for (let row = 1; row < gridSize; row+=2) {
+    for (let col = 1; col < gridSize; col+=2){
+        const gridTexture = await Assets.load('/images/gridSpriteUnbreakable.png');
         const gridSprite = Sprite.from(gridTexture);
         gridSprite.x = col * (gridSpriteSize + 1);
         gridSprite.y = row * (gridSpriteSize + 1);
@@ -78,13 +88,12 @@ function localPlayerBombDrop(playerNumber) {
         bomb1.scale = 0.02;
         app.stage.addChild(bomb1);
     }else{
-        if (playerNumber === 2){
-            let bomb2 = new Sprite(Assets.get('/images/sesu.png'));
-            bomb2.position.set(Player2.x + 20, Player2.y + 20);
-            bomb2.anchor.set(0.5);
-            bomb2.scale = 0.02;
-            app.stage.addChild(bomb2);
-        }
+        let bomb2 = new Sprite(Assets.get('/images/sesu.png'));
+        bomb2.position.set(Player2.x + 20, Player2.y + 20);
+        bomb2.anchor.set(0.5);
+        bomb2.scale = 0.02;
+        app.stage.addChild(bomb2);
+        
     }
 }
 
@@ -112,7 +121,7 @@ const Player2 = new Graphics()
         width: 6
         });
 app.stage.addChild(Player2);
-Player1.position.set(470,470)
+Player1.position.set(gridSize * gridSpriteSize - 30,gridSize * gridSpriteSize - 30)
 
 document.body.appendChild(app.canvas);
 
