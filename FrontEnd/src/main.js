@@ -28,6 +28,7 @@ let p2velocityY = 0;
 let speedmodifier = 1;
 let localPlayerCount = 1;
 
+
 //the grid
 for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++){
@@ -41,6 +42,7 @@ for (let row = 0; row < gridSize; row++) {
 //unbreakable walls
 for (let row = 1; row < gridSize; row+=2) {
     for (let col = 1; col < gridSize; col+=2){
+        //still needs collision detection and similar restraints to player movement as with the borders of the grid
         const gridTexture = await Assets.load('/images/gridSpriteUnbreakable.png');
         const gridSprite = Sprite.from(gridTexture);
         gridSprite.x = col * (gridSpriteSize + 1);
@@ -82,13 +84,13 @@ window.addEventListener("keyup", (event)=>{
 
 function localPlayerBombDrop(playerNumber) {
     if (playerNumber === 1){
-        let bomb1 = new Sprite(Assets.get('/images/sesu.png'));
+        let bomb1 = new Sprite(Assets.load('/images/bomb.png'));
         bomb1.position.set(Player1.x + 20, Player1.y + 20);
         bomb1.anchor.set(0.5);
         bomb1.scale = 0.02;
         app.stage.addChild(bomb1);
     }else{
-        let bomb2 = new Sprite(Assets.get('/images/sesu.png'));
+        let bomb2 = new Sprite(Assets.load('/images/bomb.png'));
         bomb2.position.set(Player2.x + 20, Player2.y + 20);
         bomb2.anchor.set(0.5);
         bomb2.scale = 0.02;
