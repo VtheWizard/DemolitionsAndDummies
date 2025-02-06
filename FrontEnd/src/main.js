@@ -15,19 +15,18 @@ app.stage.sortableChildren = true;
 app.canvas.style.position = "absolute";
 document.body.appendChild(app.canvas);
 
-
 const speed = 1;
 const gridSpriteSize = 50;
 const gridSize = 11;
 const maxHeight = gridSize * (gridSpriteSize + 1);
 const maxWidht = gridSize * (gridSpriteSize + 1);
+const bombTexture = await Assets.load('/images/bomb.png');
 let p1velocityX = 0;
 let p1velocityY = 0;
 let p2velocityX = 0;
 let p2velocityY = 0;
 let speedmodifier = 1;
 let localPlayerCount = 1;
-
 
 //the grid
 for (let row = 0; row < gridSize; row++) {
@@ -52,7 +51,6 @@ for (let row = 1; row < gridSize; row+=2) {
 }
 
 window.addEventListener("keydown", (event)=>{
-    
     //player 1 is on arrow keys and player 2 on wasd
     switch (event.key) {
         case "ArrowUp": p1velocityY = -speed; break;
@@ -77,26 +75,25 @@ window.addEventListener("keyup", (event)=>{
         case "s": p2velocityY = 0; break;
         case "a": p2velocityX = 0; break;
         case "d": p2velocityX = 0; break;
-        case "p": localPlayerBombDrop(1);
-        case "v": localPlayerBombDrop(2);
+        case "p": localPlayerBombDrop(1); break;
+        case "v": localPlayerBombDrop(2); break;
     }
 });
 
+//bomb dropping function.
 function localPlayerBombDrop(playerNumber) {
-    if (playerNumber === 1){
-        let bomb1 = new Sprite(Assets.load('/images/bomb.png'));
-        bomb1.position.set(Player1.x + 20, Player1.y + 20);
-        bomb1.anchor.set(0.5);
-        bomb1.scale = 0.02;
-        app.stage.addChild(bomb1);
-    }else{
-        let bomb2 = new Sprite(Assets.load('/images/bomb.png'));
-        bomb2.position.set(Player2.x + 20, Player2.y + 20);
-        bomb2.anchor.set(0.5);
-        bomb2.scale = 0.02;
-        app.stage.addChild(bomb2);
-        
+    const bomb = new Sprite(bombTexture);
+    if (playerNumber === 1) {
+        bomb.position.set(Player1.x + 20, Player1.y + 20);
+        app.stage.addChild(bomb);
+    } else {
+        bomb.position.set(Player2.x + 20, Player2.y + 20);
     }
+    bomb.anchor.set(0.5);
+    app.stage.addChild(bomb);
+    setTimeout(() => {
+        app.stage.removeChild(bomb);
+    }, 2000);    
 }
 
 const Player1 = new Graphics()
@@ -127,7 +124,7 @@ Player1.position.set(gridSize * gridSpriteSize - 30,gridSize * gridSpriteSize - 
 
 document.body.appendChild(app.canvas);
 
-    //ticker
+//ticker
 app.ticker.add(() => {
     //player 1 movement
     Player1.x += p1velocityX * speedmodifier;
@@ -162,5 +159,4 @@ app.ticker.add(() => {
     } 
     
 });
-
 })();
