@@ -18,6 +18,7 @@ document.body.appendChild(app.canvas);
 const speed = 1;
 const gridSpriteSize = 50;
 const gridSize = 11;
+const playerSize = 30;
 const maxHeight = gridSize * (gridSpriteSize + 1);
 const maxWidht = gridSize * (gridSpriteSize + 1);
 const bombTexture = await Assets.load('/images/bomb.png');
@@ -26,7 +27,6 @@ let p1velocityY = 0;
 let p2velocityX = 0;
 let p2velocityY = 0;
 let speedmodifier = 1;
-let localPlayerCount = 1;
 
 //the grid
 for (let row = 0; row < gridSize; row++) {
@@ -80,14 +80,21 @@ window.addEventListener("keyup", (event)=>{
     }
 });
 
-//bomb dropping function.
+//bomb dropping function. player center seems to be off by a few pixels for some reason...
 function localPlayerBombDrop(playerNumber) {
     const bomb = new Sprite(bombTexture);
     if (playerNumber === 1) {
-        bomb.position.set(Player1.x + 20, Player1.y + 20);
-        app.stage.addChild(bomb);
+        let playerX = Player1.x;
+        let playerY = Player1.y;
+        let snappedX = Math.round(playerX / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
+        let snappedY = Math.round(playerY / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
+        bomb.position.set(snappedX, snappedY);
     } else {
-        bomb.position.set(Player2.x + 20, Player2.y + 20);
+        let playerX = Player2.x;
+        let playerY = Player2.y;
+        let snappedX = Math.round(playerX / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
+        let snappedY = Math.round(playerY / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
+        bomb.position.set(snappedX, snappedY);
     }
     bomb.anchor.set(0.5);
     app.stage.addChild(bomb);
@@ -97,7 +104,7 @@ function localPlayerBombDrop(playerNumber) {
 }
 
 const Player1 = new Graphics()
-    .rect(0, 0, 30, 30) //x,y,width,height
+    .rect(0, 0, playerSize, playerSize) //x,y,width,height
     .fill({
     color: 0xff0000,
     alpha: 0.9
@@ -110,7 +117,7 @@ app.stage.addChild(Player1);
 Player1.position.set(10,10)
 
 const Player2 = new Graphics()
-        .rect(0, 0, 30, 30) //x,y,width,height
+        .rect(0, 0, playerSize, playerSize) //x,y,width,height
         .fill({
         color: 0x00ff00,
         alpha: 0.9
