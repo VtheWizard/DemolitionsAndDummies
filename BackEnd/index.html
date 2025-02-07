@@ -13,25 +13,37 @@
         socket.onopen = () => {
             console.log('connection established');
         }
-    
+
         document.addEventListener('keydown', function(event) {
-            if (event.key === 'w' || event.key === 'a' || event.key === 's' || event.key === 'd') {
-                console.log('Key pressed:', event.key);
-                socket.send(JSON.stringify({ player_moved: playerPosition}));
+            switch (event.key) {
+                case 'w':
+                    playerPosition.row--;
+                    socket.send(JSON.stringify({ new_player_position: playerPosition}));
+                    break;
+                case 'a':
+                    playerPosition.col--;
+                    socket.send(JSON.stringify({ new_player_position: playerPosition}));
+                    break;
+                case 's':
+                    playerPosition.row++;
+                    socket.send(JSON.stringify({ new_player_position: playerPosition}));
+                    break;
+                case 'd':
+                    playerPosition.col++;
+                    socket.send(JSON.stringify({ new_player_position: playerPosition}));
+                    break;
             }
         });
 
         socket.onmessage = (event) => {
-            console.log("received: " + event.data);
-
             const message = JSON.parse(event.data);
-
             console.log(message)
 
             if (message.type == "new_player_position") {
-                newLocation.row = message.position.x;
-                newLocation.col = message.position.y;
-                updatePlayer(playerPosition, newLocation)
+                console.log("new_player_position")
+                newLocation.row = message.new_position.x
+                newLocation.col = message.new_position.y
+                updatePlayer();
             }
 
             if (message.type == "grid_init") {
@@ -46,6 +58,7 @@
         const cellSize = 40;
 
         let playerPosition = { row: 0, col: 0 };
+        let playerLastPosition = { row: 0, col: 0 };
         let newLocation = { row: 0, col: 0 }; // this data is from server
 
         function initGrid(cells) {
@@ -68,8 +81,6 @@
             }
         }
 
-        // initGrid();
-
         function drawPlayer(row, col, radius, color) {
             const centerX = col * cellSize + cellSize / 2;
             const centerY = row * cellSize + cellSize / 2;
@@ -81,28 +92,26 @@
             ctx.closePath();
         }
 
-        // drawPlayer(0,0,10,"red");
-
-        function drawCell(row, col) {
-            ctx.fillStyle = 'white';
-            ctx.fillRect(row, col, cellSize, cellSize);
-            ctx.strokeStyle = 'black';
-            ctx.strokeRect(row, col, cellSize, cellSize);
-        }
-
         function clearCell(row, col) {
             const x = col * cellSize;
             const y = row * cellSize;
             ctx.clearRect(x, y, cellSize, cellSize);
-            drawCell(row, col);
+            ctx.strokeStyle = 'black';
+            ctx.strokeRect(x, y, cellSize, cellSize);
         }
 
-        function updatePlayer(playerPosition, newLocation) {
-            clearCell(playerPosition.row, playerPosition.col);
+        function updatePlayer() {
+            // clear moved from cell
+            clearCell(playerLastPosition.row, playerLastPosition.col);
+            playerLastPosition.row = playerPosition.row;
+            playerLastPosition.col = playerPosition.col;
 
+            // clear moved to cell
+            clearCell(playerPosition.row, playerPosition.col);
             playerPosition.row = newLocation.row;
             playerPosition.col = newLocation.col;
             
+            // draw red player
             drawPlayer(playerPosition.row, playerPosition.col, 10, "red"); 
         }
 
