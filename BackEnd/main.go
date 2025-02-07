@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -31,22 +32,22 @@ type GridMessage struct {
 	Cells [][]int `json:"cells"` // 2D grid of cells, 1 is wall, 0 is empty
 }
 
-type PlayerMoveMessage struct {
-	NewPlayerPosition struct {
-		Row int `json:"row"`
-		Col int `json:"col"`
-	} `json:"new_player_position"`
-}
-
 type PlayerUpdateMessage struct {
 	Type        string   `json:"type"`
 	PlayerID    string   `json:"player_id"`
 	NewPosition Position `json:"new_position"`
 }
 
+type Bomb struct {
+	Position Position
+	Owner    *websocket.Conn
+	Timer    time.Time
+}
+
 type GameRoom struct {
 	Grid    [][]int
 	Players map[*websocket.Conn]Position
+	Bombs   []Bomb
 	Mutex   sync.Mutex
 }
 
@@ -149,21 +150,69 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 			log.Println("Read error:", err)
 			break
 		}
-		movePlayer(conn, room, p)
+		handleMessage(conn, room, p)
 	}
 }
 
-func movePlayer(conn *websocket.Conn, room *GameRoom, messageData []byte) {
-	var moveMsg PlayerMoveMessage
+func handleMovePlayer(conn *websocket.Conn, room *GameRoom, messageData []byte) {
+	var moveMsg struct {
+		PlayerPosition struct {
+			Row int `json:"row"`
+			Col int `json:"col"`
+		} `json:"playerPosition"`
+	}
+
 	if err := json.Unmarshal(messageData, &moveMsg); err != nil {
-		log.Println("Error decoding JSON:", err)
+		log.Println("Error decoding move message:", err)
 		return
 	}
+
 	room.Mutex.Lock()
-	newPos := Position{X: moveMsg.NewPlayerPosition.Row, Y: moveMsg.NewPlayerPosition.Col}
-	room.Players[conn] = newPos
+	room.Players[conn] = Position{X: moveMsg.PlayerPosition.Row, Y: moveMsg.PlayerPosition.Col}
 	room.Mutex.Unlock()
-	broadcastPlayerUpdate(room, conn, newPos)
+
+	broadcastPlayerUpdate(room, conn, room.Players[conn])
+}
+
+func handleBombSet(conn *websocket.Conn, room *GameRoom, messageData []byte) {
+	var bombMsg struct {
+		BombLocation [2]int `json:"bomb_location"`
+	}
+
+	if err := json.Unmarshal(messageData, &bombMsg); err != nil {
+		log.Println("Error decoding bomb message:", err)
+		return
+	}
+
+	room.Mutex.Lock()
+	newBomb := Bomb{
+		Position: Position{X: bombMsg.BombLocation[0], Y: bombMsg.BombLocation[1]},
+		Owner:    conn,
+		Timer:    time.Now().Add(3 * time.Second),
+	}
+	room.Bombs = append(room.Bombs, newBomb)
+	room.Mutex.Unlock()
+
+	broadcastBombUpdate(room, newBomb.Position)
+}
+
+func handleMessage(conn *websocket.Conn, room *GameRoom, messageData []byte) {
+	var baseMsg struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(messageData, &baseMsg); err != nil {
+		log.Println("Error decoding JSON type:", err)
+		return
+	}
+
+	switch baseMsg.Type {
+	case "new_player_position":
+		handleMovePlayer(conn, room, messageData)
+	case "bomb_set":
+		handleBombSet(conn, room, messageData)
+	default:
+		log.Println("Unknown message type:", baseMsg.Type)
+	}
 }
 
 func broadcastPlayerUpdate(room *GameRoom, sender *websocket.Conn, position Position) {
@@ -173,6 +222,18 @@ func broadcastPlayerUpdate(room *GameRoom, sender *websocket.Conn, position Posi
 		NewPosition: position,
 	}
 	broadcastToRoom(room, updateMessage)
+}
+
+func broadcastBombUpdate(room *GameRoom, position Position) {
+	msg := struct {
+		Type         string   `json:"type"`
+		BombPosition Position `json:"bombPosition"`
+	}{
+		Type:         "bomb_set",
+		BombPosition: position,
+	}
+
+	broadcastToRoom(room, msg)
 }
 
 func broadcastToRoom(room *GameRoom, message interface{}) {
