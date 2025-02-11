@@ -8,7 +8,7 @@ await app.init({
     //width: 800,
     //height: 600,
     resizeTo: window,
-    backgroundColor: 0x1099bb,
+    backgroundColor: 0x223344,
     backgroundAlpha: 0.9
 });
 app.stage.sortableChildren = true;
@@ -22,11 +22,15 @@ const playerSize = 30;
 const maxHeight = gridSize * (gridSpriteSize + 1);
 const maxWidht = gridSize * (gridSpriteSize + 1);
 const bombTexture = await Assets.load('/images/bomb.png');
+const eventTarget = new EventTarget();
 let p1velocityX = 0;
 let p1velocityY = 0;
 let p2velocityX = 0;
 let p2velocityY = 0;
 let speedmodifier = 1;
+let connectionToServer = false;
+let socket;
+let gridDeleted = false;
 
 //the grid
 for (let row = 0; row < gridSize; row++) {
@@ -36,6 +40,9 @@ for (let row = 0; row < gridSize; row++) {
         gridSprite.x = col * (gridSpriteSize + 1);
         gridSprite.y = row * (gridSpriteSize + 1);
         app.stage.addChild(gridSprite);
+        eventTarget.addEventListener('delete_grid', (event) => {
+            app.stage.removeChild(gridSprite);
+        });
     }
 }
 //unbreakable walls
@@ -47,6 +54,9 @@ for (let row = 1; row < gridSize; row+=2) {
         gridSprite.x = col * (gridSpriteSize + 1);
         gridSprite.y = row * (gridSpriteSize + 1);
         app.stage.addChild(gridSprite);
+        eventTarget.addEventListener('delete_grid', (event) => {
+            app.stage.removeChild(gridSprite);
+        });
     }
 }
 
@@ -77,8 +87,15 @@ window.addEventListener("keyup", (event)=>{
         case "d": p2velocityX = 0; break;
         case "p": localPlayerBombDrop(1); break;
         case "v": localPlayerBombDrop(2); break;
+        case "i": connectToServer(); break;
+        case "o": deleteGrid(); break;
     }
 });
+
+function deleteGrid() {
+    const event = new CustomEvent('delete_grid');
+    eventTarget.dispatchEvent(event);
+}
 
 //bomb dropping function. player center seems to be off by a few pixels for some reason...
 function localPlayerBombDrop(playerNumber) {
@@ -89,6 +106,12 @@ function localPlayerBombDrop(playerNumber) {
         let snappedX = Math.round(playerX / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
         let snappedY = Math.round(playerY / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
         bomb.position.set(snappedX, snappedY);
+        if (connectionToServer === true) {
+            //send bomb position to server
+            socket.send(JSON.stringify({
+                type: 'bomb_set', bomb_location: [1, 0]
+            }));
+        }
     } else {
         let playerX = Player2.x;
         let playerY = Player2.y;
@@ -102,6 +125,24 @@ function localPlayerBombDrop(playerNumber) {
         app.stage.removeChild(bomb);
     }, 2000);    
 }
+//in comments for now
+function connectToServer() {
+    if (connectionToServer === false){
+        socket = new WebSocket('ws://127.0.0.1:8080/ws');
+        console.log('attempting to connect to server on port ' + socket);
+        socket.onopen = () => {
+            console.log('connection established');
+            connectionToServer = true;
+        }
+        socket.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            console.log(message)
+        }
+    }else{
+        console.log('already connected to server');
+    }
+}
+
 
 const Player1 = new Graphics()
     .rect(0, 0, playerSize, playerSize) //x,y,width,height
@@ -136,34 +177,36 @@ app.ticker.add(() => {
     //player 1 movement
     Player1.x += p1velocityX * speedmodifier;
     Player1.y += p1velocityY * speedmodifier;
-    if (Player1.x < 0){
-        Player1.x -= p1velocityX * speedmodifier;
+    if (gridDeleted) {
+        if (Player1.x < 0){
+            Player1.x -= p1velocityX * speedmodifier;
+        }
+        if (Player1.x > maxWidht - Player1.width){
+            Player1.x -= p1velocityX * speedmodifier;
+        }
+        if (Player1.y < 0){
+            Player1.y -= p1velocityY * speedmodifier;
+        }
+        if (Player1.y > maxHeight- Player1.height){
+            Player1.y -= p1velocityY * speedmodifier;
+        } 
     }
-    if (Player1.x > maxWidht - Player1.width){
-        Player1.x -= p1velocityX * speedmodifier;
-    }
-    if (Player1.y < 0){
-        Player1.y -= p1velocityY * speedmodifier;
-    }
-    if (Player1.y > maxHeight- Player1.height){
-        Player1.y -= p1velocityY * speedmodifier;
-    } 
-
     //player 2 movement
     Player2.x += p2velocityX * speedmodifier;
     Player2.y += p2velocityY * speedmodifier;
-    if (Player2.x < 0){
-        Player2.x -= p2velocityX * speedmodifier;
+    if (gridDeleted) {
+        if (Player2.x < 0){
+            Player2.x -= p2velocityX * speedmodifier;
+        }
+        if (Player2.x > maxWidht - Player2.width){
+            Player2.x -= p2velocityX * speedmodifier;
+        }
+        if (Player2.y < 0){
+            Player2.y = p2velocityY * speedmodifier;
+        }
+        if (Player2.y > maxHeight- Player2.height){
+            Player2.y -= p2velocityY * speedmodifier;
+        } 
     }
-    if (Player2.x > maxWidht - Player2.width){
-        Player2.x -= p2velocityX * speedmodifier;
-    }
-    if (Player2.y < 0){
-        Player2.y = p2velocityY * speedmodifier;
-    }
-    if (Player2.y > maxHeight- Player2.height){
-        Player2.y -= p2velocityY * speedmodifier;
-    } 
-    
 });
 })();
