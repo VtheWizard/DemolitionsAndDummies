@@ -121,21 +121,29 @@ function localPlayerBombDrop(playerNumber) {
     if (playerNumber === 1) {
         let playerX = Player1.x;
         let playerY = Player1.y;
-        let snappedX = Math.round(playerX / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
-        let snappedY = Math.round(playerY / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
-        bomb.position.set(snappedX, snappedY);
-        if (connectionToServer === true) {
+        if (connectionToServer === false) {
+            let snappedX = Math.round(playerX / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
+            let snappedY = Math.round(playerY / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
+            bomb.position.set(snappedX, snappedY);
+        }else{
+            bomb.position.set(playerX + 15, playerY + 15);
+        }
+        /*if (connectionToServer === true) {
             //send bomb position to server
             socket.send(JSON.stringify({
                 type: 'bomb_set', bomb_location: [1, 0]
             }));
-        }
+        }*/
     } else {
         let playerX = Player2.x;
         let playerY = Player2.y;
-        let snappedX = Math.round(playerX / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
-        let snappedY = Math.round(playerY / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
-        bomb.position.set(snappedX, snappedY);
+        if (connectionToServer === false) {
+            let snappedX = Math.round(playerX / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
+            let snappedY = Math.round(playerY / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
+            bomb.position.set(snappedX, snappedY);
+        }else{
+            bomb.position.set(playerX + 15, playerY + 15);
+        }
     }
     bomb.anchor.set(0.5);
     app.stage.addChild(bomb);
@@ -164,7 +172,6 @@ function connectToServer() {
         console.log('already connected to server');
     }
 }
-
 
 const Player1 = new Graphics()
     .rect(0, 0, playerSize, playerSize) //x,y,width,height
@@ -199,7 +206,8 @@ app.ticker.add(() => {
     //player 1 movement
     Player1.x += p1velocityX * speedmodifier;
     Player1.y += p1velocityY * speedmodifier;
-    if (gridDeleted) {
+    //added if gridDeleted to unrestrict the local games boundaries
+    if (gridDeleted === false) {
         if (Player1.x < 0){
             Player1.x -= p1velocityX * speedmodifier;
         }
@@ -216,7 +224,8 @@ app.ticker.add(() => {
     //player 2 movement
     Player2.x += p2velocityX * speedmodifier;
     Player2.y += p2velocityY * speedmodifier;
-    if (gridDeleted) {
+    //added if gridDeleted to unrestrict the local games boundaries
+    if (gridDeleted === false) {
         if (Player2.x < 0){
             Player2.x -= p2velocityX * speedmodifier;
         }
