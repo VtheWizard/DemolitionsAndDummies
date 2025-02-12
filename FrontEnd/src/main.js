@@ -17,11 +17,15 @@ document.body.appendChild(app.canvas);
 
 const speed = 1;
 const gridSpriteSize = 50;
+const onlineCellSize = 40;
 const gridSize = 11;
 const playerSize = 30;
 const maxHeight = gridSize * (gridSpriteSize + 1);
 const maxWidht = gridSize * (gridSpriteSize + 1);
+const gridTexture = await Assets.load('/images/gridSpritePng.png');
+const unbreakableGridTexture = await Assets.load('/images/gridSpriteUnbreakable.png');
 const bombTexture = await Assets.load('/images/bomb.png');
+const onlineCellTexture =  await Assets.load('/images/onlineCellSprite.png');
 const eventTarget = new EventTarget();
 let p1velocityX = 0;
 let p1velocityY = 0;
@@ -34,8 +38,7 @@ let gridDeleted = false;
 
 //the grid
 for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++){
-        const gridTexture = await Assets.load('/images/gridSpritePng.png');
+    for (let col = 0; col < gridSize; col++){        
         const gridSprite = Sprite.from(gridTexture);
         gridSprite.x = col * (gridSpriteSize + 1);
         gridSprite.y = row * (gridSpriteSize + 1);
@@ -48,9 +51,8 @@ for (let row = 0; row < gridSize; row++) {
 //unbreakable walls
 for (let row = 1; row < gridSize; row+=2) {
     for (let col = 1; col < gridSize; col+=2){
-        //still needs collision detection and similar restraints to player movement as with the borders of the grid
-        const gridTexture = await Assets.load('/images/gridSpriteUnbreakable.png');
-        const gridSprite = Sprite.from(gridTexture);
+        //still needs collision detection and similar restraints to player movement as with the borders of the grid       
+        const gridSprite = Sprite.from(unbreakableGridTexture);
         gridSprite.x = col * (gridSpriteSize + 1);
         gridSprite.y = row * (gridSpriteSize + 1);
         app.stage.addChild(gridSprite);
@@ -88,13 +90,29 @@ window.addEventListener("keyup", (event)=>{
         case "p": localPlayerBombDrop(1); break;
         case "v": localPlayerBombDrop(2); break;
         case "i": connectToServer(); break;
-        case "o": deleteGrid(); break;
+        //case "o": deleteGrid(); break;
     }
 });
 
 function deleteGrid() {
     const event = new CustomEvent('delete_grid');
     eventTarget.dispatchEvent(event);
+}
+
+//creating new grid for online gamemode with smaller cellsizes based on server settings for game size
+function createOnlineGrid(cells) {
+    console.log("creating online grid from server settings");
+    for (let row = 0; row < cells[0].length; row++) {
+        for (let col = 0; col < cells.length; col++) {
+            const onlineCell = Sprite.from(onlineCellTexture);
+            onlineCell.x = col * (onlineCellSize);
+            onlineCell.y = row * (onlineCellSize);
+            app.stage.addChild(onlineCell);
+        }
+    }
+    Player1.position.set(10, 10);
+    Player2.position.set(350,350);
+    
 }
 
 //bomb dropping function. player center seems to be off by a few pixels for some reason...
@@ -133,10 +151,14 @@ function connectToServer() {
         socket.onopen = () => {
             console.log('connection established');
             connectionToServer = true;
+            deleteGrid();
         }
         socket.onmessage = (event) => {
             const message = JSON.parse(event.data);
             console.log(message)
+            if (message.type == "grid_init") {
+                createOnlineGrid(message.cells);
+            }
         }
     }else{
         console.log('already connected to server');
@@ -152,7 +174,7 @@ const Player1 = new Graphics()
     })
     .stroke({
     color: 0x000000,
-    width: 6
+    width: 2
     });
 app.stage.addChild(Player1);
 Player1.position.set(10,10)
@@ -165,10 +187,10 @@ const Player2 = new Graphics()
         })
         .stroke({
         color: 0x000000,
-        width: 6
+        width: 2
         });
 app.stage.addChild(Player2);
-Player1.position.set(gridSize * gridSpriteSize - 30,gridSize * gridSpriteSize - 30)
+Player2.position.set(gridSize * gridSpriteSize - 30,gridSize * gridSpriteSize - 30)
 
 document.body.appendChild(app.canvas);
 
