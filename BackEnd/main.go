@@ -130,11 +130,40 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 		log.Println("Upgrade error:", err)
 		return
 	}
-	log.Println("New connection from:", conn.RemoteAddr())
-
+	log.Println("New connection from", conn.RemoteAddr())
 	room := gameRooms[roomID]
+	conn.WriteJSON(GridMessage{Type: "grid_init", Cells: room.Grid})
+
+	// send new player their id
+	playerID := fmt.Sprintf("%p", conn)
+	err = conn.WriteJSON(map[string]interface{}{
+		"type":      "player_id",
+		"player_id": playerID,
+	})
+	if err != nil {
+		log.Println("Error sending player ID:", err)
+		return
+	}
+
+	// sends players that are in room to new connection.
+	for existingConn, pos := range room.Players {
+		playerUpdate := PlayerUpdateMessage{
+			Type:        "spawn_player",
+			PlayerID:    fmt.Sprintf("%p", existingConn),
+			NewPosition: pos,
+		}
+		conn.WriteJSON(playerUpdate)
+	}
+
+	spawnPositions := []Position{
+		{X: 0, Y: 0}, {X: 0, Y: 10},
+		{X: 10, Y: 0}, {X: 10, Y: 10},
+	}
+	playerCount := len(room.Players)
+	spawnPosition := spawnPositions[playerCount]
+
 	room.Mutex.Lock()
-	room.Players[conn] = Position{X: 0, Y: 0}
+	room.Players[conn] = spawnPosition
 	room.Mutex.Unlock()
 
 	defer func() {
@@ -144,9 +173,13 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 		conn.Close()
 	}()
 
-	conn.WriteJSON(GridMessage{Type: "grid_init", Cells: room.Grid})
-	playerUpdate := PlayerUpdateMessage{Type: "new_player_position", PlayerID: fmt.Sprintf("%p", conn), NewPosition: Position{X: 0, Y: 0}}
-	broadcastToRoom(room, playerUpdate)
+	// sends info of new player to everyone in room.
+	newPlayerUpdate := PlayerUpdateMessage{
+		Type:        "spawn_player",
+		PlayerID:    fmt.Sprintf("%p", conn),
+		NewPosition: spawnPosition,
+	}
+	broadcastToRoom(room, newPlayerUpdate)
 
 	for {
 		_, p, err := conn.ReadMessage()
@@ -154,7 +187,7 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 			log.Println("Read error from", conn.RemoteAddr(), ":", err)
 			break
 		}
-		log.Printf("Received data from %s, size: %d bytes\n", conn.RemoteAddr(), len(p))
+		log.Printf("Received data from %s: %s (size: %d bytes)\n", conn.RemoteAddr(), string(p), len(p))
 		handleMessage(conn, room, p)
 	}
 }
