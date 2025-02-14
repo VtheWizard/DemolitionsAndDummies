@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	rows       = 10
-	cols       = 10
+	rows       = 11
+	cols       = 11
 	maxPlayers = 2
 )
 
@@ -91,8 +91,10 @@ func createGrid() [][]int {
 				(row == rows-1 && col == cols-1) ||
 				isAdjacentToCorner(row, col) {
 				grid[row][col] = 0 // empty
+			} else if row%2 == 1 && col%2 == 1 {
+				grid[row][col] = 2 // indestructible wall
 			} else {
-				grid[row][col] = 1 // wall
+				grid[row][col] = 1 // destructible wall
 			}
 		}
 	}

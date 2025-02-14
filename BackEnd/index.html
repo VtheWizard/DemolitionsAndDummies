@@ -6,7 +6,7 @@
     <title>Document</title>
 </head>
 <body>
-    <canvas id="game" width="400" height="400" style="border:1px solid #000000;"></canvas>
+    <canvas id="game" width="440" height="440" style="border:1px solid #000000;"></canvas>
     <script>        
         const socket = new WebSocket('ws://127.0.0.1:8080/ws');
         
@@ -69,19 +69,21 @@
         let newLocation = { row: 0, col: 0 }; // this data is from server
 
         function initGrid(cells) {
-            console.log(cells)
+            console.log(cells);
             for (let row = 0; row < cells.length; row++) {
                 for (let col = 0; col < cells[0].length; col++) {
                     const x = col * cellSize;
                     const y = row * cellSize;
-                    if (cells[row][col] === 1) {
-                        ctx.fillStyle = 'gray';
+
+                    if (cells[row][col] === 2) {
+                        ctx.fillStyle = 'DimGray';
+                    } else if (cells[row][col] === 1) {
+                        ctx.fillStyle = 'DarkGray';
                     } else {
                         ctx.fillStyle = 'white';
                     }
 
                     ctx.fillRect(x, y, cellSize, cellSize);
-
                     ctx.strokeStyle = 'black';
                     ctx.strokeRect(x, y, cellSize, cellSize);
                 }
