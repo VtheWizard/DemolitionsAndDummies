@@ -130,6 +130,8 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 		log.Println("Upgrade error:", err)
 		return
 	}
+	log.Println("New connection from:", conn.RemoteAddr())
+
 	room := gameRooms[roomID]
 	room.Mutex.Lock()
 	room.Players[conn] = Position{X: 0, Y: 0}
@@ -149,9 +151,10 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, p, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("Read error:", err)
+			log.Println("Read error from", conn.RemoteAddr(), ":", err)
 			break
 		}
+		log.Printf("Received data from %s, size: %d bytes\n", conn.RemoteAddr(), len(p))
 		handleMessage(conn, room, p)
 	}
 }
@@ -239,6 +242,8 @@ func broadcastBombUpdate(room *GameRoom, position Position) {
 }
 
 func broadcastToRoom(room *GameRoom, message interface{}) {
+	log.Printf("Broadcasting message: %+v\n", message)
+
 	room.Mutex.Lock()
 	defer room.Mutex.Unlock()
 	for player := range room.Players {
