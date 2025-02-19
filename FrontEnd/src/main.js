@@ -30,6 +30,8 @@ const onlineCellTexture2 = await Assets.load('/images/onlineCellSprite2.png');
 const eventTarget = new EventTarget();
 let p1velocityX = 0;
 let p1velocityY = 0;
+let lastSentPositionP1 = {row: -1, col: -1};
+let lastSentPositionP2 = {row: -1, col: -1};
 let p2velocityX = 0;
 let p2velocityY = 0;
 let speedmodifier = 1;
@@ -128,7 +130,9 @@ function localPlayerBombDrop(playerNumber) {
             let snappedY = Math.round(playerY / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
             bomb.position.set(snappedX, snappedY);
         }else{
-            bomb.position.set(playerX + 15, playerY + 15);
+            let snappedX = Math.round(playerX / (onlineCellSize + 1)) * (onlineCellSize + 1) + onlineCellSize / 2;
+            let snappedY = Math.round(playerY / (onlineCellSize + 1)) * (onlineCellSize + 1) + onlineCellSize / 2;
+            bomb.position.set(snappedX - 2, snappedY - 2);
         }
         /*if (connectionToServer === true) {
             //send bomb position to server
@@ -144,7 +148,9 @@ function localPlayerBombDrop(playerNumber) {
             let snappedY = Math.round(playerY / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
             bomb.position.set(snappedX, snappedY);
         }else{
-            bomb.position.set(playerX + 15, playerY + 15);
+            let snappedX = Math.round(playerX / (onlineCellSize + 1)) * (onlineCellSize + 1) + onlineCellSize / 2;
+            let snappedY = Math.round(playerY / (onlineCellSize + 1)) * (onlineCellSize + 1) + onlineCellSize / 2;
+            bomb.position.set(snappedX - 2, snappedY - 2);
         }
     }
     bomb.anchor.set(0.5);
@@ -225,6 +231,17 @@ app.ticker.add(() => {
             Player1.y -= p1velocityY * speedmodifier;
         } 
     }
+    //checking if player1 moved to another cell
+    let p1Row = Math.floor((Player1.y + playerSize / 2) / onlineCellSize);
+    let p1Col = Math.floor((Player1.x + playerSize / 2) / onlineCellSize);
+
+    if (gridDeleted !==false) {
+        if (p1Row !== lastSentPositionP1.row || p1Col !== lastSentPositionP1.col){
+            socket.send(JSON.stringify({type: "new_player_position", playerPosition: lastSentPositionP1}));
+            console.log(JSON.stringify(lastSentPositionP1));
+        }
+    }
+    
     //player 2 movement
     Player2.x += p2velocityX * speedmodifier;
     Player2.y += p2velocityY * speedmodifier;
@@ -242,6 +259,14 @@ app.ticker.add(() => {
         if (Player2.y > maxHeight- Player2.height){
             Player2.y -= p2velocityY * speedmodifier;
         } 
-    }
+    }/*else{
+        //checking if player2 moved to another cell
+        let p2Row = Math.floor((Player2.y + PlayerSize / 2) / onlineCellSize);
+        let p2Col = Math.floor((Player2.x + PlayerSize / 2) / onlineCellSize);
+        if (p2Row !== lastSentPositionP2.row || p2Col !== lastSentPositionP2.col){
+            socket.send(JSON.stringify({type: "new_player_position", playerPosition: lastSentPositionP2}))
+        }
+    }*/ //commented out since there is no player 2 for online mode in the version of the backend i have as far as i know...
+    
 });
 })();
