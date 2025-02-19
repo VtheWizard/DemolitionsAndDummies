@@ -26,6 +26,7 @@ const gridTexture = await Assets.load('/images/gridSpritePng.png');
 const unbreakableGridTexture = await Assets.load('/images/gridSpriteUnbreakable.png');
 const bombTexture = await Assets.load('/images/bomb.png');
 const onlineCellTexture =  await Assets.load('/images/onlineCellSprite.png');
+const onlineCellTexture2 = await Assets.load('/images/onlineCellSprite2.png');
 const eventTarget = new EventTarget();
 let p1velocityX = 0;
 let p1velocityY = 0;
@@ -104,7 +105,8 @@ function createOnlineGrid(cells) {
     console.log("creating online grid from server settings");
     for (let row = 0; row < cells[0].length; row++) {
         for (let col = 0; col < cells.length; col++) {
-            const onlineCell = Sprite.from(onlineCellTexture);
+            const onlineTexture = cells[row][col] === 1 ? onlineCellTexture : onlineCellTexture2;
+            const onlineCell = Sprite.from(onlineTexture);
             onlineCell.x = col * (onlineCellSize);
             onlineCell.y = row * (onlineCellSize);
             app.stage.addChild(onlineCell);
