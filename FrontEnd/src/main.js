@@ -183,19 +183,21 @@ const Player1 = new Graphics()
     color: 0x000000,
     width: 2
     });
+Player1.zIndex = 999
 app.stage.addChild(Player1);
 Player1.position.set(10,10)
 
 const Player2 = new Graphics()
-        .rect(0, 0, playerSize, playerSize) //x,y,width,height
-        .fill({
-        color: 0x00ff00,
-        alpha: 0.9
-        })
-        .stroke({
-        color: 0x000000,
-        width: 2
-        });
+    .rect(0, 0, playerSize, playerSize) //x,y,width,height
+    .fill({
+    color: 0x00ff00,
+    alpha: 0.9
+    })
+    .stroke({
+    color: 0x000000,
+    width: 2
+    });
+Player2.zIndex = 998
 app.stage.addChild(Player2);
 Player2.position.set(gridSize * gridSpriteSize - 30,gridSize * gridSpriteSize - 30)
 
