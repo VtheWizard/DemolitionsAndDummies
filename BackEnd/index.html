@@ -6,7 +6,7 @@
     <title>Document</title>
 </head>
 <body>
-    <canvas id="game" width="400" height="400" style="border:1px solid #000000;"></canvas>
+    <canvas id="game" width="440" height="440" style="border:1px solid #000000;"></canvas>
     <script>        
         const socket = new WebSocket('ws://127.0.0.1:8080/ws');
         
@@ -17,23 +17,23 @@
         document.addEventListener('keydown', function(event) {
             switch (event.key) {
                 case 'w':
-                    playerPosition.row--;
-                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition}));
+                    my_player.new_position.x--;
+                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition:{"row":my_player.new_position.x--, "col": my_player.new_position.y}}));
                     break;
                 case 'a':
-                    playerPosition.col--;
-                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition}));
+                    my_player.new_position.y--;
+                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition:{"row":my_player.new_position.x, "col": my_player.new_position.y}}));
                     break;
                 case 's':
-                    playerPosition.row++;
-                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition}));
+                    my_player.new_position.x++;
+                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition:{"row":my_player.new_position.x, "col": my_player.new_position.y}}));
                     break;
                 case 'd':
-                    playerPosition.col++;
-                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition}));
+                    my_player.new_position.y++;
+                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition:{"row":my_player.new_position.x, "col": my_player.new_position.y}}));
                     break;
                 case ' ':
-                    socket.send(JSON.stringify({ type: "bomb_set", bomb_location: [1,0]}))
+                    socket.send(JSON.stringify({ type: "bomb_set" }))
                     break;
             }
         });
@@ -42,19 +42,33 @@
             const message = JSON.parse(event.data);
             console.log(message)
 
+            if (message.type == "player_id") {
+                my_player_id = message.player_id;
+
+            }
+
+            if (message.type == "spawn_player") {
+                const { player_id, new_position } = message;
+                drawPlayer(new_position.x, new_position.y, 10, player_colors[players.length])
+                players.push({player_id, new_position})
+                console.log(players)
+                if (my_player == undefined) {
+                    my_player = players.find(p => p.player_id === my_player_id);
+                }
+            }
+
             if (message.type == "new_player_position") {
-                console.log("new_player_position")
-                newLocation.row = message.new_position.x
-                newLocation.col = message.new_position.y
-                updatePlayer();
+                const { player_id, new_position } = message;
+                updatePlayer(player_id, new_position);
             }
 
             if (message.type == "grid_init") {
-                initGrid(message.cells);
+                grid = message.cells;
+                drawGrid(grid);
             }
 
             if (message.type == "bomb_set") {
-                drawPlayer(message.bombPosition.x, message.bombPosition.y, 6, "blue"); 
+                drawPlayer(message.bombPosition[0], message.bombPosition[1], 6, "black"); 
             }
 
         };
@@ -63,25 +77,27 @@
         const ctx = canvas.getContext("2d");
 
         const cellSize = 40;
+        const players = [];
+        const player_colors = ["red", "blue", "green", "yellow"];
+        let my_player_id = "";
+        let my_player;
+        let grid = [[]];
 
-        let playerPosition = { row: 0, col: 0 };
-        let playerLastPosition = { row: 0, col: 0 };
-        let newLocation = { row: 0, col: 0 }; // this data is from server
-
-        function initGrid(cells) {
-            console.log(cells)
+        function drawGrid(cells) {
             for (let row = 0; row < cells.length; row++) {
                 for (let col = 0; col < cells[0].length; col++) {
                     const x = col * cellSize;
                     const y = row * cellSize;
-                    if (cells[row][col] === 1) {
-                        ctx.fillStyle = 'gray';
+
+                    if (cells[row][col] === 2) {
+                        ctx.fillStyle = 'DimGray';
+                    } else if (cells[row][col] === 1) {
+                        ctx.fillStyle = 'DarkGray';
                     } else {
                         ctx.fillStyle = 'white';
                     }
 
                     ctx.fillRect(x, y, cellSize, cellSize);
-
                     ctx.strokeStyle = 'black';
                     ctx.strokeRect(x, y, cellSize, cellSize);
                 }
@@ -102,24 +118,30 @@
         function clearCell(row, col) {
             const x = col * cellSize;
             const y = row * cellSize;
-            ctx.clearRect(x, y, cellSize, cellSize);
+            if (grid[row][col] === 2) {
+                ctx.fillStyle = 'DimGray';
+            } else if (grid[row][col] === 1) {
+                ctx.fillStyle = 'DarkGray';
+            } else {
+                ctx.fillStyle = 'white';
+            }
+            ctx.fillRect(x, y, cellSize, cellSize);
             ctx.strokeStyle = 'black';
             ctx.strokeRect(x, y, cellSize, cellSize);
         }
 
-        function updatePlayer() {
-            // clear moved from cell
-            clearCell(playerLastPosition.row, playerLastPosition.col);
-            playerLastPosition.row = playerPosition.row;
-            playerLastPosition.col = playerPosition.col;
+        function updatePlayer(player_id, new_position) {
+            const player = players.find(p => p.player_id === player_id);
+            oldPosition = player.new_position;
+            player.new_position = new_position;
+            console.log("old",oldPosition)
 
-            // clear moved to cell
-            clearCell(playerPosition.row, playerPosition.col);
-            playerPosition.row = newLocation.row;
-            playerPosition.col = newLocation.col;
-            
-            // draw red player
-            drawPlayer(playerPosition.row, playerPosition.col, 10, "red"); 
+            // clear moved from cell
+            clearCell(oldPosition.x, oldPosition.y);
+
+            // draw player
+            const playerIndex = players.findIndex(p => p.player_id === player_id);
+            drawPlayer(player.new_position.x, player.new_position.y, 10, player_colors[playerIndex]); 
         }
 
     </script>
