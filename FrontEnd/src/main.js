@@ -38,6 +38,7 @@ let p2velocityY = 0;
 let speedmodifier = 0.5;
 let connectionToServer = false;
 let socket;
+let onlineTexture;
 let gridDeleted = false;
 //the grid
 for (let row = 0; row < gridSize; row++) {
@@ -108,7 +109,14 @@ function createOnlineGrid(cells) {
     console.log("creating online grid from server settings");
     for (let row = 0; row < cells[0].length; row++) {
         for (let col = 0; col < cells.length; col++) {
-            const onlineTexture = cells[row][col] === 1 ? onlineCellTexture2 : onlineCellTexture;
+            if (cells[row][col] === 0) {
+                onlineTexture = onlineCellTexture;
+            }else if (cells[row][col] === 1) {
+                onlineTexture = onlineCellTexture2;
+            } else {
+                onlineTexture = onlineCellTextureUnbreakable;
+            }
+
             const onlineCell = Sprite.from(onlineTexture);
             onlineCell.x = col * (onlineCellSize);
             onlineCell.y = row * (onlineCellSize);
