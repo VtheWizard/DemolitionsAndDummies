@@ -25,8 +25,8 @@ const maxWidht = gridSize * (gridSpriteSize + 1);
 const gridTexture = await Assets.load('/images/gridSpritePng.png');
 const unbreakableGridTexture = await Assets.load('/images/gridSpriteUnbreakable.png');
 const bombTexture = await Assets.load('/images/bomb.png');
-const onlineCellTextureEmpty =  await Assets.load('/images/onlineCellSprite.png');
-const onlineCellTextureBreakable = await Assets.load('/images/onlineCellSprite2.png');
+const onlineCellTextureEmpty =  await Assets.load('/images/onlineCellSpriteEmpty.png');
+const onlineCellTextureBreakable = await Assets.load('/images/onlineCellSpriteBreakable.png');
 const onlineCellTextureUnbreakable = await Assets.load('/images/onlineCellSpriteUnbreakable.png');
 const eventTarget = new EventTarget();
 let p1velocityX = 0;
@@ -140,11 +140,12 @@ function localPlayerBombDrop(playerNumber) {
             snappedY = Math.round(playerY / onlineCellSize) * onlineCellSize + onlineCellSize / 2;            
             let p1Row = Math.floor((Player1.y + playerSize / 2) / onlineCellSize);
             let p1Col = Math.floor((Player1.x + playerSize / 2) / onlineCellSize);
-            console.log("row: ", p1Row, " col: ", p1Col);
+            console.log("col aka X: ", p1Col, " row aka Y: ", p1Row);
         }
         if (connectionToServer === true) {
             //send bomb position to server
             socket.send(JSON.stringify({ type: "bomb_set" }));
+            //return; //commented out while not recieving bomb drop message from server
         }
     } else {
         let playerX = Player2.x;
@@ -155,10 +156,21 @@ function localPlayerBombDrop(playerNumber) {
         }else{
             snappedX = Math.round(playerX / onlineCellSize) * onlineCellSize + onlineCellSize / 2;
             snappedY = Math.round(playerY / onlineCellSize) * onlineCellSize + onlineCellSize / 2;
-
         }
     }
     dropBomb(snappedX, snappedY);    
+}
+function onlineDropBomb(bombPosition) {
+    let x = onlineCellSize * bombPosition[0];
+    let y = onlineCellSize * bombPosition[1];
+    dropBomb(x, y);
+}
+
+function destroyCells(destroyedCells) {
+    //dippadii
+    //todo:
+    //make online cells into an array so you can more easily destroy breakable cells
+    //when a cell is destroyed, swap the png with onlineCellSprite.png
 }
 
 function dropBomb(x,y) {
@@ -186,6 +198,12 @@ function connectToServer() {
             console.log(message)
             if (message.type == "grid_init") {
                 createOnlineGrid(message.cells);
+            }
+            if (message.type == "bomb_set") {
+                onlineDropBomb(message.bombPosition);
+            }
+            if (message.type == "walls_destroyed") {
+                destroyCells(message.destroyedCells)
             }
         }
     }else{
@@ -244,8 +262,8 @@ app.ticker.add(() => {
         } 
     }
     //checking if player1 moved to another cell
-    let p1Row = ((Player1.y + playerSize / 2) / onlineCellSize);
-    let p1Col = ((Player1.x + playerSize / 2) / onlineCellSize);
+    let p1Row = Math.round((Player1.y + playerSize / 2) / onlineCellSize);
+    let p1Col = Math.round((Player1.x + playerSize / 2) / onlineCellSize);
 
     if (gridDeleted !==false) {
         if (p1Row !== lastSentPositionP1.row || p1Col !== lastSentPositionP1.col){
