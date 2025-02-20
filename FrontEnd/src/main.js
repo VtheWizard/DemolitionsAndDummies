@@ -161,16 +161,20 @@ function localPlayerBombDrop(playerNumber) {
     dropBomb(snappedX, snappedY);    
 }
 function onlineDropBomb(bombPosition) {
-    let x = onlineCellSize * bombPosition[0];
-    let y = onlineCellSize * bombPosition[1];
+    let x = onlineCellSize * bombPosition[0] - onlineCellSize / 2;
+    let y = onlineCellSize * bombPosition[1] - onlineCellSize / 2;
     dropBomb(x, y);
 }
 
 function destroyCells(destroyedCells) {
-    //dippadii
-    //todo:
-    //make online cells into an array so you can more easily destroy breakable cells
-    //when a cell is destroyed, swap the png with onlineCellSprite.png
+    for (let i = 0; i < destroyedCells.length; i++) {
+        let col = destroyedCells[i].x;
+        let row = destroyedCells[i].y;
+        const onlineCell = Sprite.from(onlineCellTextureEmpty);
+        onlineCell.x = col * (onlineCellSize);
+        onlineCell.y = row * (onlineCellSize);
+        app.stage.addChild(onlineCell);
+    }
 }
 
 function dropBomb(x,y) {
@@ -262,7 +266,7 @@ app.ticker.add(() => {
         } 
     }
     //checking if player1 moved to another cell
-    let p1Row = Math.round((Player1.y + playerSize / 2) / onlineCellSize);
+    let p1Row = Math.round((Player1.y + playerSize / 2) / onlineCellSize); //remove Math.round when server can handle floats
     let p1Col = Math.round((Player1.x + playerSize / 2) / onlineCellSize);
 
     if (gridDeleted !==false) {
@@ -295,8 +299,8 @@ app.ticker.add(() => {
         } 
     }/*else{
         //checking if player2 moved to another cell
-        let p2Row = Math.floor((Player2.y + PlayerSize / 2) / onlineCellSize);
-        let p2Col = Math.floor((Player2.x + PlayerSize / 2) / onlineCellSize);
+        let p2Row = Math.round((Player2.y + PlayerSize / 2) / onlineCellSize);
+        let p2Col = Math.round((Player2.x + PlayerSize / 2) / onlineCellSize);
         if (p2Row !== lastSentPositionP2.row || p2Col !== lastSentPositionP2.col){
             socket.send(JSON.stringify({type: "new_player_position", playerPosition: lastSentPositionP2}))
         }
