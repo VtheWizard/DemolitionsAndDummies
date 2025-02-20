@@ -238,6 +238,51 @@ func handleBombSet(conn *websocket.Conn, room *GameRoom, messageData []byte) {
 
 	broadcastToRoom(room, bombMessage)
 	log.Printf("Bomb placed by %p at [%d, %d]\n", conn, playerPos.X, playerPos.Y)
+
+	go func(pos Position, room *GameRoom) {
+		time.Sleep(3 * time.Second)
+		explodeBomb(room, pos)
+	}(playerPos, room)
+}
+
+func explodeBomb(room *GameRoom, pos Position) {
+	log.Printf("Bomb exploded at [%d, %d]\n", pos.X, pos.Y)
+
+	explosionMessage := struct {
+		Type         string `json:"type"`
+		BombPosition [2]int `json:"bombPosition"`
+	}{
+		Type:         "bomb_explode",
+		BombPosition: [2]int{pos.X, pos.Y},
+	}
+	broadcastToRoom(room, explosionMessage)
+	destroyWalls(room, pos)
+}
+
+func destroyWalls(room *GameRoom, pos Position) {
+	room.Mutex.Lock()
+	directions := []struct{ dx, dy int }{{0, -1}, {0, 1}, {-1, 0}, {1, 0}}
+	destroyedCells := []Position{}
+
+	for _, d := range directions {
+		newX, newY := pos.X+d.dx, pos.Y+d.dy
+		if newX >= 0 && newX < len(room.Grid) && newY >= 0 && newY < len(room.Grid[0]) {
+			if room.Grid[newX][newY] == 1 {
+				room.Grid[newX][newY] = 0
+				destroyedCells = append(destroyedCells, Position{X: newX, Y: newY})
+			}
+		}
+	}
+	room.Mutex.Unlock()
+	if len(destroyedCells) > 0 {
+		broadcastToRoom(room, struct {
+			Type           string     `json:"type"`
+			DestroyedCells []Position `json:"destroyedCells"`
+		}{
+			Type:           "walls_destroyed",
+			DestroyedCells: destroyedCells,
+		})
+	}
 }
 
 func handleMessage(conn *websocket.Conn, room *GameRoom, messageData []byte) {
