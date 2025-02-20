@@ -262,22 +262,21 @@ func explodeBomb(room *GameRoom, pos Position) {
 func destroyWalls(room *GameRoom, pos Position) {
 	room.Mutex.Lock()
 	directions := []struct{ dx, dy int }{{0, -1}, {0, 1}, {-1, 0}, {1, 0}}
-	destroyedCells := []Position{}
-
+	destroyedCells := [][2]int{}
 	for _, d := range directions {
 		newX, newY := pos.X+d.dx, pos.Y+d.dy
 		if newX >= 0 && newX < len(room.Grid) && newY >= 0 && newY < len(room.Grid[0]) {
 			if room.Grid[newX][newY] == 1 {
 				room.Grid[newX][newY] = 0
-				destroyedCells = append(destroyedCells, Position{X: newX, Y: newY})
+				destroyedCells = append(destroyedCells, [2]int{newX, newY})
 			}
 		}
 	}
 	room.Mutex.Unlock()
 	if len(destroyedCells) > 0 {
 		broadcastToRoom(room, struct {
-			Type           string     `json:"type"`
-			DestroyedCells []Position `json:"destroyedCells"`
+			Type           string   `json:"type"`
+			DestroyedCells [][2]int `json:"destroyedCells"`
 		}{
 			Type:           "walls_destroyed",
 			DestroyedCells: destroyedCells,
