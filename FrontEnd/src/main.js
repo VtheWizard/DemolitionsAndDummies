@@ -25,8 +25,8 @@ const maxWidht = gridSize * (gridSpriteSize + 1);
 const gridTexture = await Assets.load('/images/gridSpritePng.png');
 const unbreakableGridTexture = await Assets.load('/images/gridSpriteUnbreakable.png');
 const bombTexture = await Assets.load('/images/bomb.png');
-const onlineCellTexture =  await Assets.load('/images/onlineCellSprite.png');
-const onlineCellTexture2 = await Assets.load('/images/onlineCellSprite2.png');
+const onlineCellTextureEmpty =  await Assets.load('/images/onlineCellSprite.png');
+const onlineCellTextureBreakable = await Assets.load('/images/onlineCellSprite2.png');
 const onlineCellTextureUnbreakable = await Assets.load('/images/onlineCellSpriteUnbreakable.png');
 const eventTarget = new EventTarget();
 let p1velocityX = 0;
@@ -69,32 +69,31 @@ for (let row = 1; row < gridSize; row+=2) {
 window.addEventListener("keydown", (event)=>{
     //player 1 is on arrow keys and player 2 on wasd
     switch (event.key) {
-        case "ArrowUp": p1velocityY = -speed; break;
-        case "ArrowDown": p1velocityY = speed; break;
+        case "ArrowUp": p1velocityY = -speed;   break;
+        case "ArrowDown": p1velocityY = speed;  break;
         case "ArrowLeft": p1velocityX = -speed; break;
         case "ArrowRight": p1velocityX = speed; break;
-        case "w": p2velocityY = -speed; break;
-        case "s": p2velocityY = speed; break;
-        case "a": p2velocityX = -speed; break;
-        case "d": p2velocityX = speed; break;
+        case "w": p2velocityY = -speed;         break;
+        case "s": p2velocityY = speed;          break;
+        case "a": p2velocityX = -speed;         break;
+        case "d": p2velocityX = speed;          break;
     }
 });
 
 window.addEventListener("keyup", (event)=>{
     //player 1 on arrows and player 2 on wasd, bomb drops are on v and p keys respectively
     switch (event.key) {
-        case "ArrowUp": p1velocityY = 0; break;
-        case "ArrowDown": p1velocityY = 0; break;
-        case "ArrowLeft": p1velocityX = 0; break;
-        case "ArrowRight": p1velocityX = 0; break;
-        case "w": p2velocityY = 0; break;
-        case "s": p2velocityY = 0; break;
-        case "a": p2velocityX = 0; break;
-        case "d": p2velocityX = 0; break;
-        case "p": localPlayerBombDrop(1); break;
-        case "v": localPlayerBombDrop(2); break;
-        case "i": connectToServer(); break;
-        //case "o": deleteGrid(); break;
+        case "ArrowUp": p1velocityY = 0;        break;
+        case "ArrowDown": p1velocityY = 0;      break;
+        case "ArrowLeft": p1velocityX = 0;      break;
+        case "ArrowRight": p1velocityX = 0;     break;
+        case "w": p2velocityY = 0;              break;
+        case "s": p2velocityY = 0;              break;
+        case "a": p2velocityX = 0;              break;
+        case "d": p2velocityX = 0;              break;
+        case "p": localPlayerBombDrop(1);       break;
+        case "v": localPlayerBombDrop(2);       break;
+        case "i": connectToServer();            break;
     }
 });
 
@@ -110,13 +109,12 @@ function createOnlineGrid(cells) {
     for (let row = 0; row < cells[0].length; row++) {
         for (let col = 0; col < cells.length; col++) {
             if (cells[row][col] === 0) {
-                onlineTexture = onlineCellTexture;
+                onlineTexture = onlineCellTextureEmpty;
             }else if (cells[row][col] === 1) {
-                onlineTexture = onlineCellTexture2;
+                onlineTexture = onlineCellTextureBreakable;
             } else {
                 onlineTexture = onlineCellTextureUnbreakable;
             }
-
             const onlineCell = Sprite.from(onlineTexture);
             onlineCell.x = col * (onlineCellSize);
             onlineCell.y = row * (onlineCellSize);
@@ -125,52 +123,54 @@ function createOnlineGrid(cells) {
     }
     Player1.position.set(10, 10);
     Player2.position.set(350,350);
-    
 }
 
 //bomb dropping function. player center seems to be off by a few pixels for some reason...
 function localPlayerBombDrop(playerNumber) {
-    const bomb = new Sprite(bombTexture);
+    let snappedX = 0;
+    let snappedY = 0;
     if (playerNumber === 1) {
         let playerX = Player1.x;
         let playerY = Player1.y;
         if (connectionToServer === false) {
-            let snappedX = Math.round(playerX / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
-            let snappedY = Math.round(playerY / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
-            bomb.position.set(snappedX, snappedY);
+            snappedX = Math.round(playerX / gridSpriteSize) * gridSpriteSize + gridSpriteSize / 2;
+            snappedY = Math.round(playerY / gridSpriteSize) * gridSpriteSize + gridSpriteSize / 2;            
         }else{
-            let snappedX = Math.round(playerX / (onlineCellSize + 1)) * (onlineCellSize + 1) + onlineCellSize / 2;
-            let snappedY = Math.round(playerY / (onlineCellSize + 1)) * (onlineCellSize + 1) + onlineCellSize / 2;
-            bomb.position.set(snappedX - 2, snappedY - 2);
+            snappedX = Math.round(playerX / onlineCellSize) * onlineCellSize + onlineCellSize / 2;
+            snappedY = Math.round(playerY / onlineCellSize) * onlineCellSize + onlineCellSize / 2;            
             let p1Row = Math.floor((Player1.y + playerSize / 2) / onlineCellSize);
             let p1Col = Math.floor((Player1.x + playerSize / 2) / onlineCellSize);
             console.log("row: ", p1Row, " col: ", p1Col);
         }
-        /*if (connectionToServer === true) {
+        if (connectionToServer === true) {
             //send bomb position to server
-            socket.send(JSON.stringify({
-                type: 'bomb_set', bomb_location: [1, 0]
-            }));
-        }*/
+            socket.send(JSON.stringify({ type: "bomb_set" }));
+        }
     } else {
         let playerX = Player2.x;
         let playerY = Player2.y;
         if (connectionToServer === false) {
-            let snappedX = Math.round(playerX / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
-            let snappedY = Math.round(playerY / (gridSpriteSize + 1)) * (gridSpriteSize + 1) + gridSpriteSize / 2;
-            bomb.position.set(snappedX, snappedY);
+            snappedX = Math.round(playerX / gridSpriteSize) * gridSpriteSize + gridSpriteSize / 2;
+            snappedY = Math.round(playerY / gridSpriteSize) * gridSpriteSize + gridSpriteSize / 2;
         }else{
-            let snappedX = Math.round(playerX / (onlineCellSize + 1)) * (onlineCellSize + 1) + onlineCellSize / 2;
-            let snappedY = Math.round(playerY / (onlineCellSize + 1)) * (onlineCellSize + 1) + onlineCellSize / 2;
-            bomb.position.set(snappedX - 2, snappedY - 2);
+            snappedX = Math.round(playerX / onlineCellSize) * onlineCellSize + onlineCellSize / 2;
+            snappedY = Math.round(playerY / onlineCellSize) * onlineCellSize + onlineCellSize / 2;
+
         }
     }
+    dropBomb(snappedX, snappedY);    
+}
+
+function dropBomb(x,y) {
+    const bomb = new Sprite(bombTexture);
+    bomb.position.set(x, y);
     bomb.anchor.set(0.5);
     app.stage.addChild(bomb);
     setTimeout(() => {
         app.stage.removeChild(bomb);
-    }, 2000);    
+    }, 2000);
 }
+
 //in comments for now
 function connectToServer() {
     if (connectionToServer === false){
