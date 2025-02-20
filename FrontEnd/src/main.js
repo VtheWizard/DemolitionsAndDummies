@@ -35,11 +35,10 @@ let lastSentPositionP1 = {row: -1, col: -1};
 let lastSentPositionP2 = {row: -1, col: -1};
 let p2velocityX = 0;
 let p2velocityY = 0;
-let speedmodifier = 1;
+let speedmodifier = 0.5;
 let connectionToServer = false;
 let socket;
 let gridDeleted = false;
-
 //the grid
 for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++){        
@@ -101,6 +100,7 @@ window.addEventListener("keyup", (event)=>{
 function deleteGrid() {
     const event = new CustomEvent('delete_grid');
     eventTarget.dispatchEvent(event);
+    gridDeleted = true;
 }
 
 //creating new grid for online gamemode with smaller cellsizes based on server settings for game size
@@ -134,6 +134,9 @@ function localPlayerBombDrop(playerNumber) {
             let snappedX = Math.round(playerX / (onlineCellSize + 1)) * (onlineCellSize + 1) + onlineCellSize / 2;
             let snappedY = Math.round(playerY / (onlineCellSize + 1)) * (onlineCellSize + 1) + onlineCellSize / 2;
             bomb.position.set(snappedX - 2, snappedY - 2);
+            let p1Row = Math.floor((Player1.y + playerSize / 2) / onlineCellSize);
+            let p1Col = Math.floor((Player1.x + playerSize / 2) / onlineCellSize);
+            console.log("row: ", p1Row, " col: ", p1Col);
         }
         /*if (connectionToServer === true) {
             //send bomb position to server
@@ -233,13 +236,17 @@ app.ticker.add(() => {
         } 
     }
     //checking if player1 moved to another cell
-    let p1Row = Math.floor((Player1.y + playerSize / 2) / onlineCellSize);
-    let p1Col = Math.floor((Player1.x + playerSize / 2) / onlineCellSize);
+    let p1Row = ((Player1.y + playerSize / 2) / onlineCellSize);
+    let p1Col = ((Player1.x + playerSize / 2) / onlineCellSize);
 
     if (gridDeleted !==false) {
         if (p1Row !== lastSentPositionP1.row || p1Col !== lastSentPositionP1.col){
-            socket.send(JSON.stringify({type: "new_player_position", playerPosition: lastSentPositionP1}));
-            console.log(JSON.stringify(lastSentPositionP1));
+            let message = JSON.stringify({type: "new_player_position", playerPosition: lastSentPositionP1});
+            socket.send(message);
+            console.log(message);
+            //console.log("FPS at the time of last movement of player 1: ",app.ticker.FPS.toString());
+            lastSentPositionP1.row = p1Row;
+            lastSentPositionP1.col = p1Col;
         }
     }
     
