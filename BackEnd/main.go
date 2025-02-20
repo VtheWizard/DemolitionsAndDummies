@@ -213,25 +213,31 @@ func handleMovePlayer(conn *websocket.Conn, room *GameRoom, messageData []byte) 
 }
 
 func handleBombSet(conn *websocket.Conn, room *GameRoom, messageData []byte) {
-	var bombMsg struct {
-		BombLocation [2]int `json:"bomb_location"`
-	}
-
-	if err := json.Unmarshal(messageData, &bombMsg); err != nil {
-		log.Println("Error decoding bomb message:", err)
+	room.Mutex.Lock()
+	playerPos, exists := room.Players[conn]
+	if !exists {
+		room.Mutex.Unlock()
+		log.Println("Player not found in room")
 		return
 	}
-
-	room.Mutex.Lock()
-	newBomb := Bomb{
-		Position: Position{X: bombMsg.BombLocation[0], Y: bombMsg.BombLocation[1]},
+	bomb := Bomb{
+		Position: playerPos,
 		Owner:    conn,
-		Timer:    time.Now().Add(3 * time.Second),
+		Timer:    time.Now(),
 	}
-	room.Bombs = append(room.Bombs, newBomb)
+	room.Bombs = append(room.Bombs, bomb)
 	room.Mutex.Unlock()
 
-	broadcastBombUpdate(room, newBomb.Position)
+	bombMessage := struct {
+		Type         string `json:"type"`
+		BombPosition [2]int `json:"bombPosition"`
+	}{
+		Type:         "bomb_set",
+		BombPosition: [2]int{playerPos.X, playerPos.Y},
+	}
+
+	broadcastToRoom(room, bombMessage)
+	log.Printf("Bomb placed by %p at [%d, %d]\n", conn, playerPos.X, playerPos.Y)
 }
 
 func handleMessage(conn *websocket.Conn, room *GameRoom, messageData []byte) {
@@ -260,18 +266,6 @@ func broadcastPlayerUpdate(room *GameRoom, sender *websocket.Conn, position Posi
 		NewPosition: position,
 	}
 	broadcastToRoom(room, updateMessage)
-}
-
-func broadcastBombUpdate(room *GameRoom, position Position) {
-	msg := struct {
-		Type         string   `json:"type"`
-		BombPosition Position `json:"bombPosition"`
-	}{
-		Type:         "bomb_set",
-		BombPosition: position,
-	}
-
-	broadcastToRoom(room, msg)
 }
 
 func broadcastToRoom(room *GameRoom, message interface{}) {

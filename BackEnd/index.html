@@ -33,7 +33,7 @@
                     socket.send(JSON.stringify({ type: "new_player_position", playerPosition:{"row":my_player.new_position.x, "col": my_player.new_position.y}}));
                     break;
                 case ' ':
-                    socket.send(JSON.stringify({ type: "bomb_set", bomb_location: [1,0]}))
+                    socket.send(JSON.stringify({ type: "bomb_set" }))
                     break;
             }
         });
@@ -68,7 +68,7 @@
             }
 
             if (message.type == "bomb_set") {
-                drawPlayer(message.bombPosition.x, message.bombPosition.y, 6, "blue"); 
+                drawPlayer(message.bombPosition[0], message.bombPosition[1], 6, "black"); 
             }
 
         };
