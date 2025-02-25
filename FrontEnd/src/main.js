@@ -112,10 +112,10 @@ function deleteGrid() {
 }
 
 //creating new grid for online gamemode with smaller cellsizes based on server settings for game size
-function createOnlineGrid(cells) {
+/*function createOnlineGrid(cells) {
     console.log("creating online grid from server settings");
-    for (let row = 0; row < cells[0].length; row++) {
-        for (let col = 0; col < cells.length; col++) {
+    for (let row = 0; row < cells.length; row++) {
+        for (let col = 0; col < cells[0].length; col++) {
             if (cells[row][col] === 0) {
                 onlineTexture = onlineCellTextureEmpty;
             }else if (cells[row][col] === 1) {
@@ -127,6 +127,30 @@ function createOnlineGrid(cells) {
             onlineCell.x = col * (onlineCellSize);
             onlineCell.y = row * (onlineCellSize);
             app.stage.addChild(onlineCell);
+        }
+    }
+    Player1.position.set(10, 10);
+    Player2.position.set(350,350);
+}*/
+// testing creating onlinegrid with arrays
+const onlineGridSprites =  [];
+function createOnlineGrid(cells){
+    console.log("creating online grid with arrays");
+    for (let row = 0; row < cells.length; row++) {
+        onlineGridSprites[row] = [];
+        for (let col = 0; col < cells[row].length; col++){
+            if (cells[row][col] === 0) {
+                onlineTexture = onlineCellTextureEmpty;
+            }else if (cells[row][col] === 1) {
+                onlineTexture = onlineCellTextureBreakable;
+            } else {
+                onlineTexture = onlineCellTextureUnbreakable;
+            }
+            const onlineCell = Sprite.from(onlineTexture);
+            onlineCell.x = col * (onlineCellSize);
+            onlineCell.y = row * (onlineCellSize);
+            app.stage.addChild(onlineCell);
+            onlineGridSprites[row][col] = onlineCell; //add reference
         }
     }
     Player1.position.set(10, 10);
@@ -181,10 +205,7 @@ function destroyCells(destroyedCells) {
     for (let i = 0; i < destroyedCells.length; i++) {
         let col = destroyedCells[i][0];
         let row = destroyedCells[i][1];
-        const onlineCell = Sprite.from(onlineCellTextureEmpty);
-        onlineCell.x = col * (onlineCellSize);
-        onlineCell.y = row * (onlineCellSize);
-        app.stage.addChild(onlineCell);
+        onlineGridSprites[col][row].texture = onlineCellTextureEmpty;
         console.log("destroyed cell; " + col + " " + row);
     }
 }
@@ -208,6 +229,7 @@ function connectToServer() {
             console.log('connection established');
             connectionToServer = true;
             deleteGrid();
+            app.stage.removeChild(Player2);
         }
         socket.onmessage = (event) => {
             const message = JSON.parse(event.data);
