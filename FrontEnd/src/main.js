@@ -1,4 +1,4 @@
-import { Application, Graphics, Text, TextStyle, Sprite, Assets } from "pixi.js";
+import { Application, Graphics, Text, TextStyle, Sprite, Assets, Container } from "pixi.js";
 
 (async() => {
 
@@ -15,6 +15,7 @@ app.stage.sortableChildren = true;
 app.canvas.style.position = "absolute";
 document.body.appendChild(app.canvas);
 
+const menuSize = 200;
 const speed = 1;
 const gridSpriteSize = 50;
 const onlineCellSize = 40;
@@ -41,33 +42,38 @@ let socket;
 let onlineTexture;
 let gridDeleted = false;
 
+//----------------------------------------------------------------
+
 // creating grid for local game
-const localGridSprites = [];
-for (let row = 0; row < gridSize; row++) {
-    localGridSprites[row] = [];
-    for (let col = 0; col < gridSize; col++) {
-        const gridSprite = Sprite.from(gridTexture);
-        gridSprite.x = col * (gridSpriteSize + 1);
-        gridSprite.y = row * (gridSpriteSize + 1);
-        app.stage.addChild(gridSprite);
-        localGridSprites[row][col] = gridSprite; //add reference
-        eventTarget.addEventListener('delete_grid', (event) => {
-            app.stage.removeChild(gridSprite);
-        });
+function createLocalGrid(){
+    const localGridSprites = [];
+    for (let row = 0; row < gridSize; row++) {
+        localGridSprites[row] = [];
+        for (let col = 0; col < gridSize; col++) {
+            const gridSprite = Sprite.from(gridTexture);
+            gridSprite.x = col * (gridSpriteSize + 1);
+            gridSprite.y = row * (gridSpriteSize + 1);
+            app.stage.addChild(gridSprite);
+            localGridSprites[row][col] = gridSprite; //add reference
+            eventTarget.addEventListener('delete_grid', (event) => {
+                app.stage.removeChild(gridSprite);
+            });
+        }
     }
-}
-// loop for swapping unbreakable walls' textures
-for (let row = 1; row < gridSize; row+=2) {
-    for (let col = 1; col < gridSize; col+=2){
-        localGridSprites[row][col].texture = unbreakableGridTexture;
-        eventTarget.addEventListener('delete_grid', (event) => {
-            localGridSprites[row][col].texture = gridTexture;
-        });
+    // loop for swapping unbreakable walls' textures
+    for (let row = 1; row < gridSize; row+=2) {
+        for (let col = 1; col < gridSize; col+=2){
+            localGridSprites[row][col].texture = unbreakableGridTexture;
+            eventTarget.addEventListener('delete_grid', (event) => {
+                localGridSprites[row][col].texture = gridTexture;
+            });
+        }
     }
 }
 
+
 //function to remove a specific grid cell in local mode
-function removeGridCell(col, row){
+function removeLocalCell(col, row){
     if (localGridSprites[row] && localGridSprites[row][col]){
         app.stage.removeChild(localGridSprites[row][col]);
         localGridSprites[row][col] = null; //clear reference
@@ -101,7 +107,7 @@ window.addEventListener("keyup", (event)=>{
         case "d": p2velocityX = 0;              break;
         case "p": localPlayerBombDrop(1);       break;
         case "v": localPlayerBombDrop(2);       break;
-        case "i": connectToServer();            break;
+        //case "i": connectToServer();            break;
     }
 });
 
@@ -111,28 +117,6 @@ function deleteGrid() {
     gridDeleted = true;
 }
 
-//creating new grid for online gamemode with smaller cellsizes based on server settings for game size
-/*function createOnlineGrid(cells) {
-    console.log("creating online grid from server settings");
-    for (let row = 0; row < cells.length; row++) {
-        for (let col = 0; col < cells[0].length; col++) {
-            if (cells[row][col] === 0) {
-                onlineTexture = onlineCellTextureEmpty;
-            }else if (cells[row][col] === 1) {
-                onlineTexture = onlineCellTextureBreakable;
-            } else {
-                onlineTexture = onlineCellTextureUnbreakable;
-            }
-            const onlineCell = Sprite.from(onlineTexture);
-            onlineCell.x = col * (onlineCellSize);
-            onlineCell.y = row * (onlineCellSize);
-            app.stage.addChild(onlineCell);
-        }
-    }
-    Player1.position.set(10, 10);
-    Player2.position.set(350,350);
-}*/
-// testing creating onlinegrid with arrays
 const onlineGridSprites =  [];
 function createOnlineGrid(cells){
     console.log("creating online grid with arrays");
@@ -154,7 +138,7 @@ function createOnlineGrid(cells){
         }
     }
     Player1.position.set(10, 10);
-    Player2.position.set(350,350);
+    //Player2.position.set(350,350);
 }
 
 //bomb dropping function. player center seems to be off by a few pixels for some reason...
@@ -220,7 +204,7 @@ function dropBomb(x,y) {
     }, 2000);
 }
 
-//in comments for now
+
 function connectToServer() {
     if (!connectionToServer){
         socket = new WebSocket('ws://127.0.0.1:8080/ws');
@@ -276,6 +260,68 @@ const Player2 = new Graphics()
 Player2.zIndex = 998
 app.stage.addChild(Player2);
 Player2.position.set(gridSize * gridSpriteSize - 30,gridSize * gridSpriteSize - 30)
+
+//----------------------------------------------------------------
+
+//making a menu
+const menuContainer = new Container();
+app.stage.addChild(menuContainer);
+const menuBackground = new Graphics()
+    .rect(0, 0, app.renderer.width, app.renderer.height)
+    .fill({
+    color: 0x000000,
+    alpha: 0.5
+    });
+menuContainer.addChild(menuBackground);
+menuBackground.zIndex = 1000
+
+const textStyle = new TextStyle({
+    fontSize: 32,
+    fill: 0xffffff,
+    fontWeight: 'bold'
+})
+
+function createButton(label, x, y, callback) {
+    const button = new Graphics()
+        .rect(0, 0, 300, 60)
+        .fill({
+            color: 0xffffff,
+            alpha: 0.5
+        })
+        .stroke({
+            color: 0x000000,
+            width: 2
+        });
+    button.position.set(x, y);
+    button.eventMode = "static";
+    button.cursor = "pointer";
+    const buttonText = new Text({
+        text: label,
+        style:textStyle
+    });
+    buttonText.anchor.set(0.5, 0.5);
+    buttonText.position.set(150, 30);
+    button.zIndex = 1001;
+    button.addChild(buttonText);
+    button.on("pointerdown", callback);
+    return button;
+}
+
+const localButton = createButton("Local Multiplayer", app.renderer.width / 10, app.renderer.height / 4 - 40, () => {
+        connectionToServer = false;
+        createLocalGrid();
+        app.stage.removeChild(menuContainer);
+    }
+);
+const onlineButton = createButton("Online Multiplayer", app.renderer.width / 10, app.renderer.height / 4 + 40, () => {
+        connectToServer();
+        app.stage.removeChild(menuContainer);
+    }
+);
+
+menuContainer.addChild(localButton);
+menuContainer.addChild(onlineButton);
+//---------------------------------------------------------------
 
 document.body.appendChild(app.canvas);
 
