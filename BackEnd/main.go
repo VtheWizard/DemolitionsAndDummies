@@ -14,7 +14,7 @@ import (
 const (
 	rows       = 11
 	cols       = 11
-	maxPlayers = 2
+	maxPlayers = 2 // 2 for easier testing
 )
 
 type GridMessage struct {
@@ -25,6 +25,11 @@ type GridMessage struct {
 type PlayerUpdateMessage struct {
 	Type           string `json:"type"`
 	PlayerID       string `json:"player_id"`
+	PlayerPosition [2]int `json:"playerPosition"`
+}
+
+type movedWronglyMessage struct {
+	Type           string `json:"type"`
 	PlayerPosition [2]int `json:"playerPosition"`
 }
 
@@ -206,14 +211,62 @@ func handleMovePlayer(conn *websocket.Conn, room *GameRoom, messageData []byte) 
 		return
 	}
 
+	newPosition := moveMsg.PlayerPosition
+	if !isValidMove(room, newPosition, room.Players[conn]) {
+		log.Println("Invalid move attempted:", newPosition)
+		handleWrongMovement(conn, room.Players[conn])
+		return
+	}
+
 	room.Mutex.Lock()
-	room.Players[conn] = moveMsg.PlayerPosition
+	room.Players[conn] = newPosition
 	room.Mutex.Unlock()
 
 	broadcastPlayerUpdate(room, conn, room.Players[conn])
 }
 
-func handleBombSet(conn *websocket.Conn, room *GameRoom, messageData []byte) {
+func handleWrongMovement(sender *websocket.Conn, pos [2]int) {
+	movedWronglymessage := movedWronglyMessage{
+		Type:           "moved_wrongly",
+		PlayerPosition: pos,
+	}
+	sender.WriteJSON(movedWronglymessage)
+	log.Printf("Sent movedWrongly message to %p, playerPosition: %v", sender, pos)
+}
+
+func isValidMove(room *GameRoom, position [2]int, currentPlayerPosition [2]int) bool {
+	grid := room.Grid
+
+	// check for out of bounds
+	if position[0] < 0 || position[1] < 0 || position[1] >= len(grid) || position[0] >= len(grid[0]) {
+		return false
+	}
+
+	// check for walls
+	if grid[position[0]][position[1]] != 0 {
+		return false
+	}
+
+	// check that new position is adjacent on player location
+	if !isAdjacentOrSame(currentPlayerPosition, position) {
+		return false
+	}
+
+	return true
+}
+
+func isAdjacentOrSame(current [2]int, next [2]int) bool {
+	if current == next {
+		return true
+	}
+
+	dx := abs(current[0] - next[0])
+	dy := abs(current[1] - next[1])
+
+	return (dx == 1 && dy == 0) || (dx == 0 && dy == 1)
+}
+
+func handleBombSet(conn *websocket.Conn, room *GameRoom) {
 	room.Mutex.Lock()
 	playerPos, exists := room.Players[conn]
 	if !exists {
@@ -298,7 +351,7 @@ func handleMessage(conn *websocket.Conn, room *GameRoom, messageData []byte) {
 	case "new_player_position":
 		handleMovePlayer(conn, room, messageData)
 	case "bomb_set":
-		handleBombSet(conn, room, messageData)
+		handleBombSet(conn, room)
 	default:
 		log.Println("Unknown message type:", baseMsg.Type)
 	}

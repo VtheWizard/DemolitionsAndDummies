@@ -42,4 +42,11 @@
     [3, 10]
   ]
 }
+
+{ 
+  "type": "moved_wrongly",
+  "playerPosition": [ 1, 0 ] 
+}
+​
+
 ```
