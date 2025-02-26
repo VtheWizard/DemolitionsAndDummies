@@ -13,24 +13,23 @@
         socket.onopen = () => {
             console.log('connection established');
         }
-
         document.addEventListener('keydown', function(event) {
             switch (event.key) {
                 case 'w':
-                    my_player.new_position.x--;
-                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition:{"row":my_player.new_position.x--, "col": my_player.new_position.y}}));
+                    my_player.playerPosition[0]--;
+                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition:[my_player.playerPosition[0],  my_player.playerPosition[1]]}));
                     break;
                 case 'a':
-                    my_player.new_position.y--;
-                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition:{"row":my_player.new_position.x, "col": my_player.new_position.y}}));
+                    my_player.playerPosition[1]--;
+                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition:[my_player.playerPosition[0],  my_player.playerPosition[1]]}));
                     break;
                 case 's':
-                    my_player.new_position.x++;
-                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition:{"row":my_player.new_position.x, "col": my_player.new_position.y}}));
+                    my_player.playerPosition[0]++;
+                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition:[my_player.playerPosition[0],  my_player.playerPosition[1]]}));
                     break;
                 case 'd':
-                    my_player.new_position.y++;
-                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition:{"row":my_player.new_position.x, "col": my_player.new_position.y}}));
+                    my_player.playerPosition[1]++;
+                    socket.send(JSON.stringify({ type: "new_player_position", playerPosition:[my_player.playerPosition[0],  my_player.playerPosition[1]]}));
                     break;
                 case ' ':
                     socket.send(JSON.stringify({ type: "bomb_set" }))
@@ -48,9 +47,9 @@
             }
 
             if (message.type == "spawn_player") {
-                const { player_id, new_position } = message;
-                drawPlayer(new_position.x, new_position.y, 10, player_colors[players.length])
-                players.push({player_id, new_position})
+                const { player_id, playerPosition } = message;
+                drawPlayer(playerPosition[0], playerPosition[1], 10, player_colors[players.length])
+                players.push({player_id, playerPosition})
                 console.log(players)
                 if (my_player == undefined) {
                     my_player = players.find(p => p.player_id === my_player_id);
@@ -58,8 +57,8 @@
             }
 
             if (message.type == "new_player_position") {
-                const { player_id, new_position } = message;
-                updatePlayer(player_id, new_position);
+                const { player_id, playerPosition } = message;
+                updatePlayer(player_id, playerPosition);
             }
 
             if (message.type == "grid_init") {
@@ -130,18 +129,18 @@
             ctx.strokeRect(x, y, cellSize, cellSize);
         }
 
-        function updatePlayer(player_id, new_position) {
+        function updatePlayer(player_id, playerPosition) {
             const player = players.find(p => p.player_id === player_id);
-            oldPosition = player.new_position;
-            player.new_position = new_position;
+            oldPosition = player.playerPosition;
+            player.playerPosition = playerPosition;
             console.log("old",oldPosition)
 
             // clear moved from cell
-            clearCell(oldPosition.x, oldPosition.y);
+            clearCell(oldPosition[0], oldPosition[1]);
 
             // draw player
             const playerIndex = players.findIndex(p => p.player_id === player_id);
-            drawPlayer(player.new_position.x, player.new_position.y, 10, player_colors[playerIndex]); 
+            drawPlayer(player.playerPosition[0], player.playerPosition[1], 10, player_colors[playerIndex]); 
         }
 
     </script>
