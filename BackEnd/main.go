@@ -14,18 +14,8 @@ import (
 const (
 	rows       = 11
 	cols       = 11
-	maxPlayers = 2
+	maxPlayers = 2 // 2 for easier testing
 )
-
-type Position struct {
-	X int `json:"x"`
-	Y int `json:"y"`
-}
-
-type Message struct {
-	Type     string   `json:"type"`
-	Position Position `json:"position"`
-}
 
 type GridMessage struct {
 	Type  string  `json:"type"`
@@ -33,20 +23,25 @@ type GridMessage struct {
 }
 
 type PlayerUpdateMessage struct {
-	Type        string   `json:"type"`
-	PlayerID    string   `json:"player_id"`
-	NewPosition Position `json:"new_position"`
+	Type           string     `json:"type"`
+	PlayerID       string     `json:"player_id"`
+	PlayerPosition [2]float64 `json:"playerPosition"`
+}
+
+type movedWronglyMessage struct {
+	Type           string     `json:"type"`
+	PlayerPosition [2]float64 `json:"playerPosition"`
 }
 
 type Bomb struct {
-	Position Position
+	Position [2]int
 	Owner    *websocket.Conn
 	Timer    time.Time
 }
 
 type GameRoom struct {
 	Grid    [][]int
-	Players map[*websocket.Conn]Position
+	Players map[*websocket.Conn][2]float64
 	Bombs   []Bomb
 	Mutex   sync.Mutex
 }
@@ -64,13 +59,13 @@ var (
 	roomCount int
 )
 
-func isAdjacentToCorner(row, col int) bool {
-	cornerPositions := []Position{
+func isAdjacentToCorner(row, col, rows, cols int) bool {
+	cornerPositions := [][2]int{
 		{0, 0}, {0, cols - 1},
 		{rows - 1, 0}, {rows - 1, cols - 1},
 	}
 	for _, corner := range cornerPositions {
-		if (row == corner.X && abs(col-corner.Y) == 1) || (col == corner.Y && abs(row-corner.X) == 1) {
+		if (row == corner[0] && abs(col-corner[1]) == 1) || (col == corner[1] && abs(row-corner[0]) == 1) {
 			return true
 		}
 	}
@@ -89,7 +84,7 @@ func createGrid() [][]int {
 				(row == 0 && col == cols-1) ||
 				(row == rows-1 && col == 0) ||
 				(row == rows-1 && col == cols-1) ||
-				isAdjacentToCorner(row, col) {
+				isAdjacentToCorner(row, col, rows, cols) {
 				grid[row][col] = 0 // empty
 			} else if row%2 == 1 && col%2 == 1 {
 				grid[row][col] = 2 // indestructible wall
@@ -118,7 +113,7 @@ func assignRoom() string {
 	roomCount++
 	gameRooms[roomID] = &GameRoom{
 		Grid:    createGrid(),
-		Players: make(map[*websocket.Conn]Position),
+		Players: make(map[*websocket.Conn][2]float64),
 	}
 	return roomID
 }
@@ -132,14 +127,28 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("New connection from", conn.RemoteAddr())
 	room := gameRooms[roomID]
-	conn.WriteJSON(GridMessage{Type: "grid_init", Cells: room.Grid})
+	gridMessage := GridMessage{
+		Type:  "grid_init",
+		Cells: room.Grid,
+	}
+	conn.WriteJSON(gridMessage)
+	log.Printf("Sending grid message: %+v\n", gridMessage)
+
+	type PlayerIDMessage struct {
+		Type     string `json:"type"`
+		PlayerID string `json:"player_id"`
+	}
 
 	// send new player their id
 	playerID := fmt.Sprintf("%p", conn)
-	err = conn.WriteJSON(map[string]interface{}{
-		"type":      "player_id",
-		"player_id": playerID,
-	})
+	message := PlayerIDMessage{
+		Type:     "player_id",
+		PlayerID: playerID,
+	}
+
+	log.Printf("Sending player ID message: %+v\n", message)
+
+	err = conn.WriteJSON(message)
 	if err != nil {
 		log.Println("Error sending player ID:", err)
 		return
@@ -148,16 +157,16 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	// sends players that are in room to new connection.
 	for existingConn, pos := range room.Players {
 		playerUpdate := PlayerUpdateMessage{
-			Type:        "spawn_player",
-			PlayerID:    fmt.Sprintf("%p", existingConn),
-			NewPosition: pos,
+			Type:           "spawn_player",
+			PlayerID:       fmt.Sprintf("%p", existingConn),
+			PlayerPosition: [2]float64{float64(pos[0]), float64(pos[1])},
 		}
 		conn.WriteJSON(playerUpdate)
 	}
 
-	spawnPositions := []Position{
-		{X: 0, Y: 0}, {X: 0, Y: 10},
-		{X: 10, Y: 0}, {X: 10, Y: 10},
+	spawnPositions := [][2]float64{
+		{0, 0}, {0, 10},
+		{10, 0}, {10, 10},
 	}
 	playerCount := len(room.Players)
 	spawnPosition := spawnPositions[playerCount]
@@ -175,9 +184,9 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 
 	// sends info of new player to everyone in room.
 	newPlayerUpdate := PlayerUpdateMessage{
-		Type:        "spawn_player",
-		PlayerID:    fmt.Sprintf("%p", conn),
-		NewPosition: spawnPosition,
+		Type:           "spawn_player",
+		PlayerID:       fmt.Sprintf("%p", conn),
+		PlayerPosition: [2]float64{float64(spawnPosition[0]), float64(spawnPosition[1])},
 	}
 	broadcastToRoom(room, newPlayerUpdate)
 
@@ -194,10 +203,7 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 
 func handleMovePlayer(conn *websocket.Conn, room *GameRoom, messageData []byte) {
 	var moveMsg struct {
-		PlayerPosition struct {
-			Row int `json:"row"`
-			Col int `json:"col"`
-		} `json:"playerPosition"`
+		PlayerPosition [2]float64 `json:"playerPosition"`
 	}
 
 	if err := json.Unmarshal(messageData, &moveMsg); err != nil {
@@ -205,23 +211,76 @@ func handleMovePlayer(conn *websocket.Conn, room *GameRoom, messageData []byte) 
 		return
 	}
 
+	newPosition := moveMsg.PlayerPosition
+	playerPosition := room.Players[conn]
+	intNewPosition := [2]int{int(newPosition[0]), int(newPosition[1])}
+	intPlayerPosition := [2]int{int(playerPosition[0]), int(playerPosition[1])}
+
+	if !isValidMove(room, intNewPosition, intPlayerPosition) {
+		log.Println("Invalid move attempted:", newPosition)
+		handleWrongMovement(conn, room.Players[conn])
+		return
+	}
+
 	room.Mutex.Lock()
-	room.Players[conn] = Position{X: moveMsg.PlayerPosition.Row, Y: moveMsg.PlayerPosition.Col}
+	room.Players[conn] = newPosition
 	room.Mutex.Unlock()
 
 	broadcastPlayerUpdate(room, conn, room.Players[conn])
 }
 
-func handleBombSet(conn *websocket.Conn, room *GameRoom, messageData []byte) {
+func handleWrongMovement(sender *websocket.Conn, pos [2]float64) {
+	movedWronglymessage := movedWronglyMessage{
+		Type:           "moved_wrongly",
+		PlayerPosition: pos,
+	}
+	sender.WriteJSON(movedWronglymessage)
+	log.Printf("Sent movedWrongly message to %p, playerPosition: %v", sender, pos)
+}
+
+func isValidMove(room *GameRoom, position [2]int, currentPlayerPosition [2]int) bool {
+	grid := room.Grid
+
+	// check for out of bounds
+	if position[0] < 0 || position[1] < 0 || position[1] >= len(grid) || position[0] >= len(grid[0]) {
+		return false
+	}
+
+	// check for walls
+	if grid[position[0]][position[1]] != 0 {
+		return false
+	}
+
+	// check that new position is adjacent on player location
+	if !isAdjacentOrSame(currentPlayerPosition, position) {
+		return false
+	}
+
+	return true
+}
+
+func isAdjacentOrSame(current [2]int, next [2]int) bool {
+	if current == next {
+		return true
+	}
+
+	dx := abs(current[0] - next[0])
+	dy := abs(current[1] - next[1])
+
+	return (dx == 1 && dy == 0) || (dx == 0 && dy == 1)
+}
+
+func handleBombSet(conn *websocket.Conn, room *GameRoom) {
 	room.Mutex.Lock()
 	playerPos, exists := room.Players[conn]
+	intPlayerPos := [2]int{int(playerPos[0]), int(playerPos[1])}
 	if !exists {
 		room.Mutex.Unlock()
 		log.Println("Player not found in room")
 		return
 	}
 	bomb := Bomb{
-		Position: playerPos,
+		Position: intPlayerPos,
 		Owner:    conn,
 		Timer:    time.Now(),
 	}
@@ -233,38 +292,38 @@ func handleBombSet(conn *websocket.Conn, room *GameRoom, messageData []byte) {
 		BombPosition [2]int `json:"bombPosition"`
 	}{
 		Type:         "bomb_set",
-		BombPosition: [2]int{playerPos.X, playerPos.Y},
+		BombPosition: [2]int{intPlayerPos[0], intPlayerPos[1]},
 	}
 
 	broadcastToRoom(room, bombMessage)
-	log.Printf("Bomb placed by %p at [%d, %d]\n", conn, playerPos.X, playerPos.Y)
+	log.Printf("Bomb placed by %p at [%d, %d]\n", conn, intPlayerPos[0], intPlayerPos[1])
 
-	go func(pos Position, room *GameRoom) {
+	go func(pos [2]int, room *GameRoom) {
 		time.Sleep(3 * time.Second)
 		explodeBomb(room, pos)
-	}(playerPos, room)
+	}(intPlayerPos, room)
 }
 
-func explodeBomb(room *GameRoom, pos Position) {
-	log.Printf("Bomb exploded at [%d, %d]\n", pos.X, pos.Y)
+func explodeBomb(room *GameRoom, pos [2]int) {
+	log.Printf("Bomb exploded at [%d, %d]\n", pos[0], pos[1])
 
 	explosionMessage := struct {
 		Type         string `json:"type"`
 		BombPosition [2]int `json:"bombPosition"`
 	}{
 		Type:         "bomb_explode",
-		BombPosition: [2]int{pos.X, pos.Y},
+		BombPosition: [2]int{pos[0], pos[1]},
 	}
 	broadcastToRoom(room, explosionMessage)
 	destroyWalls(room, pos)
 }
 
-func destroyWalls(room *GameRoom, pos Position) {
+func destroyWalls(room *GameRoom, pos [2]int) {
 	room.Mutex.Lock()
 	directions := []struct{ dx, dy int }{{0, -1}, {0, 1}, {-1, 0}, {1, 0}}
 	destroyedCells := [][2]int{}
 	for _, d := range directions {
-		newX, newY := pos.X+d.dx, pos.Y+d.dy
+		newX, newY := pos[0]+d.dx, pos[1]+d.dy
 		if newX >= 0 && newX < len(room.Grid) && newY >= 0 && newY < len(room.Grid[0]) {
 			if room.Grid[newX][newY] == 1 {
 				room.Grid[newX][newY] = 0
@@ -297,17 +356,17 @@ func handleMessage(conn *websocket.Conn, room *GameRoom, messageData []byte) {
 	case "new_player_position":
 		handleMovePlayer(conn, room, messageData)
 	case "bomb_set":
-		handleBombSet(conn, room, messageData)
+		handleBombSet(conn, room)
 	default:
 		log.Println("Unknown message type:", baseMsg.Type)
 	}
 }
 
-func broadcastPlayerUpdate(room *GameRoom, sender *websocket.Conn, position Position) {
+func broadcastPlayerUpdate(room *GameRoom, sender *websocket.Conn, pos [2]float64) {
 	updateMessage := PlayerUpdateMessage{
-		Type:        "new_player_position",
-		PlayerID:    fmt.Sprintf("%p", sender),
-		NewPosition: position,
+		Type:           "new_player_position",
+		PlayerID:       fmt.Sprintf("%p", sender),
+		PlayerPosition: pos,
 	}
 	broadcastToRoom(room, updateMessage)
 }
