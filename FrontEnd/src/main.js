@@ -30,17 +30,20 @@ const onlineCellTextureEmpty =  await Assets.load('/images/onlineCellSpriteEmpty
 const onlineCellTextureBreakable = await Assets.load('/images/onlineCellSpriteBreakable.png');
 const onlineCellTextureUnbreakable = await Assets.load('/images/onlineCellSpriteUnbreakable.png');
 const eventTarget = new EventTarget();
+const playerList = {};
 
 let p1velocityX = 0;
 let p1velocityY = 0;
-let lastSentPosition = {row: -1, col: -1};
+let lastSentPosition = {row: 0, col: 0};
 let p2velocityX = 0;
 let p2velocityY = 0;
-let speedmodifier = 0.5;
+let speedmodifier = 0.9;
 let connectionToServer = false;
 let socket;
 let onlineTexture;
 let gridDeleted = false;
+let myPlayerID = "0xc000000000";
+
 
 //----------------------------------------------------------------
 
@@ -107,7 +110,7 @@ window.addEventListener("keyup", (event)=>{
         case "d": p2velocityX = 0;              break;
         case "p": localPlayerBombDrop(1);       break;
         case "v": localPlayerBombDrop(2);       break;
-        //case "i": connectToServer();            break;
+        //case "i": testfunction();            break;
     }
 });
 
@@ -156,7 +159,7 @@ function localPlayerBombDrop(playerNumber) {
             snappedY = Math.round(playerY / onlineCellSize) * onlineCellSize + onlineCellSize / 2;            
             let p1Row = Math.floor((Player1.y + playerSize / 2) / onlineCellSize);
             let p1Col = Math.floor((Player1.x + playerSize / 2) / onlineCellSize);
-            console.log("col aka X: ", p1Col, " row aka Y: ", p1Row);
+            console.log("col: ", p1Col, " row: ", p1Row);
         }
         if (connectionToServer === true) {
             //send bomb position to server
@@ -180,8 +183,8 @@ function localPlayerBombDrop(playerNumber) {
        
 }
 function onlineDropBomb(bombPosition) {
-    let x = onlineCellSize * bombPosition[0]  + (onlineCellSize / 2);
-    let y = onlineCellSize * bombPosition[1]  + (onlineCellSize / 2);
+    let x = onlineCellSize * bombPosition[1]  + (onlineCellSize / 2);
+    let y = onlineCellSize * bombPosition[0]  + (onlineCellSize / 2);
     dropBomb(x, y);
 }
 
@@ -204,6 +207,38 @@ function dropBomb(x,y) {
     }, 2000);
 }
 
+function spawnPlayer(playerID, playerPosition){
+    console.log("spawning player at: ", playerPosition);
+    if (!playerList[playerID]){ //if player doesn't exist
+        const newPlayer = new Graphics()
+        .rect(0, 0, playerSize, playerSize)
+        .fill({ 
+            color: 0x0000ff,
+            alpha: 0.9
+        })  
+        .stroke({ 
+            color: 0x000000, 
+            width: 2 
+        });
+        newPlayer.zIndex =997;
+        newPlayer.position.set(playerPosition[1] * onlineCellSize, playerPosition[0] * onlineCellSize);
+        app.stage.addChild(newPlayer);
+        playerList[playerID] = newPlayer;
+    }
+    if (playerID === myPlayerID){
+        Player1.position.set(playerPosition[1] * onlineCellSize, playerPosition[0] * onlineCellSize);
+    } 
+}
+
+function movePlayer(playerID, newPosition){
+    if (playerID !== myPlayerID){
+        playerList[playerID].position.set(newPosition[1] * onlineCellSize, newPosition[0] * onlineCellSize);
+    }
+}
+
+function wrongMove(wrongPosition){
+    Player1.position.set(wrongPosition[1] * onlineCellSize, wrongPosition[0] * onlineCellSize);
+}
 
 function connectToServer() {
     if (!connectionToServer){
@@ -226,6 +261,19 @@ function connectToServer() {
             }
             if (message.type == "walls_destroyed") {
                 destroyCells(message.destroyedCells)
+            }
+            if (message.type == "player_id") {
+                myPlayerID = message.player_id;
+                playerList[message.player_id] = Player1;
+            }
+            if (message.type == "spawn_player") {
+                spawnPlayer(message.player_id, message.playerPosition);
+            }
+            if (message.type == "new_player_position") {
+                movePlayer(message.player_id, message.playerPosition);
+            }
+            if (message.type == "moved_wrongly"){
+                wrongMove(message.playerPosition);
             }
         }
     }else{
@@ -330,7 +378,7 @@ app.ticker.add(() => {
     app.ticker.maxFPS = 60;
     app.ticker.minFPS = 60;
     //console.log("FPS at the time of last tick: ",app.ticker.FPS.toString()); //uncomment to show fps in console
-
+    
     //player 1 movement
     Player1.x += p1velocityX * speedmodifier;
     Player1.y += p1velocityY * speedmodifier;
@@ -350,15 +398,14 @@ app.ticker.add(() => {
         } 
     }
     //checking if player1 moved to another cell
-    let p1Row = Math.round((Player1.y + playerSize / 2) / onlineCellSize); //remove Math.round when server can handle floats
-    let p1Col = Math.round((Player1.x + playerSize / 2) / onlineCellSize);
+    let p1Row = ((Player1.y + playerSize / 2) / onlineCellSize); //remove Math.round when server can handle floats
+    let p1Col = ((Player1.x + playerSize / 2) / onlineCellSize);
 
     if (gridDeleted !==false) {
         if (p1Row !== lastSentPosition.row || p1Col !== lastSentPosition.col){
-            let message = JSON.stringify({type: "new_player_position", playerPosition: lastSentPosition});
+            let message = JSON.stringify({type: "new_player_position", playerPosition: [lastSentPosition.row, lastSentPosition.col]});
             socket.send(message);
-            console.log(message);
-            
+            //console.log(message);
             lastSentPosition.row = p1Row;
             lastSentPosition.col = p1Col;
         }
