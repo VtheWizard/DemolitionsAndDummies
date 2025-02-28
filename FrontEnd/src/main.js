@@ -221,6 +221,7 @@ function spawnPlayer(playerID, playerPosition){
             width: 2 
         });
         newPlayer.zIndex =997;
+        newPlayer.pivot.set(0.5, 0.5);
         newPlayer.position.set(playerPosition[1] * onlineCellSize, playerPosition[0] * onlineCellSize);
         app.stage.addChild(newPlayer);
         playerList[playerID] = newPlayer;
@@ -291,9 +292,10 @@ const Player1 = new Graphics()
     color: 0x000000,
     width: 2
     });
-Player1.zIndex = 999
+Player1.zIndex = 999;
+Player1.pivot.set(0.5, 0.5);
 app.stage.addChild(Player1);
-Player1.position.set(10,10)
+Player1.position.set(10,10);
 
 const Player2 = new Graphics()
     .rect(0, 0, playerSize, playerSize) //x,y,width,height
@@ -305,9 +307,10 @@ const Player2 = new Graphics()
     color: 0x000000,
     width: 2
     });
-Player2.zIndex = 998
+Player2.zIndex = 998;
+Player2.pivot.set(0.5, 0.5);
 app.stage.addChild(Player2);
-Player2.position.set(gridSize * gridSpriteSize - 30,gridSize * gridSpriteSize - 30)
+Player2.position.set(gridSize * gridSpriteSize - 30,gridSize * gridSpriteSize - 30);
 
 //----------------------------------------------------------------
 
@@ -321,7 +324,7 @@ const menuBackground = new Graphics()
     alpha: 0.5
     });
 menuContainer.addChild(menuBackground);
-menuBackground.zIndex = 1000
+menuBackground.zIndex = 1000;
 
 const textStyle = new TextStyle({
     fontSize: 32,
@@ -398,8 +401,8 @@ app.ticker.add(() => {
         } 
     }
     //checking if player1 moved to another cell
-    let p1Row = ((Player1.y + playerSize / 2) / onlineCellSize); //remove Math.round when server can handle floats
-    let p1Col = ((Player1.x + playerSize / 2) / onlineCellSize);
+    let p1Row = ((Player1.y) / onlineCellSize); //remove Math.round when server can handle floats
+    let p1Col = ((Player1.x) / onlineCellSize);
 
     if (gridDeleted !==false) {
         if (p1Row !== lastSentPosition.row || p1Col !== lastSentPosition.col){
