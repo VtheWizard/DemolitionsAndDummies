@@ -31,7 +31,7 @@ const onlineCellTextureBreakable = await Assets.load('/images/onlineCellSpriteBr
 const onlineCellTextureUnbreakable = await Assets.load('/images/onlineCellSpriteUnbreakable.png');
 const eventTarget = new EventTarget();
 const playerList = {};
-
+let playerName = "dummy";
 let p1velocityX = 0;
 let p1velocityY = 0;
 let lastSentPosition = {row: 0, col: 0};
@@ -358,20 +358,50 @@ function createButton(label, x, y, callback) {
     return button;
 }
 
-const localButton = createButton("Local Multiplayer", app.renderer.width / 10, app.renderer.height / 4 - 40, () => {
+const localButton = createButton("Local Multiplayer", app.renderer.width / 10, app.renderer.height / 4 - 60, () => {
         connectionToServer = false;
         createLocalGrid();
         app.stage.removeChild(menuContainer);
+        hideNameInput();
     }
 );
-const onlineButton = createButton("Online Multiplayer", app.renderer.width / 10, app.renderer.height / 4 + 40, () => {
+const onlineButton = createButton("Online Multiplayer", app.renderer.width / 10, app.renderer.height / 4 + 60, () => {
         connectToServer();
         app.stage.removeChild(menuContainer);
+        playerName = nameInput.value.trim();
+        console.log("player name: ",playerName);
+        hideNameInput();
     }
 );
 
 menuContainer.addChild(localButton);
 menuContainer.addChild(onlineButton);
+
+//making a name input for online multiplayer
+const nameInput = document.createElement("input");
+nameInput.type = "text";
+nameInput.placeholder = "Enter your name";
+nameInput.style.position = "absolute";
+nameInput.style.top = `${app.renderer.height / 4}px`;  // Position it between the buttons
+nameInput.style.left = `${app.renderer.width / 10}px`;
+nameInput.style.width = "275px";
+nameInput.style.height = "30px";  // Increased height for better visibility
+nameInput.style.fontSize = "24px";  // Larger font size for better visibility
+nameInput.style.textAlign = "center";
+nameInput.style.border = "3px solid #ffffff";  // Thicker border for more contrast
+nameInput.style.background = "rgba(0, 0, 0, 0.8)";  // Darker background for better contrast
+nameInput.style.color = "#ffffff";  // White text for better readability
+nameInput.style.padding = "10px";  // Padding for a better feel
+nameInput.style.borderRadius = "10px";  // Rounded corners for a more modern look
+nameInput.style.outline = "none";  // Remove default outline
+nameInput.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.5)";  // Shadow for depth
+nameInput.style.zIndex = "10000";  // Make sure the input is above other elements
+document.body.appendChild(nameInput);
+
+function hideNameInput() {
+    document.body.removeChild(nameInput);
+}
+
 //---------------------------------------------------------------
 
 document.body.appendChild(app.canvas);
