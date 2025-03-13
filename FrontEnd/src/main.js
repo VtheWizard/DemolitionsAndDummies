@@ -289,6 +289,41 @@ function wrongMove(wrongPosition) {
     Player1.position.set(wrongPosition[1] * onlineCellSize, wrongPosition[0] * onlineCellSize);
 }
 
+function destroyPlayer(playerID) {
+    if (playerID === myPlayerID){
+        console.log("Player " + playerID + " has been destroyed");
+        gameOver(playerID);
+    } else {
+        console.log("Player " + playerID + " has been destroyed");
+        app.stage.removeChild(playerList[playerID]);
+        delete playerList[playerID];
+    }
+}
+
+function showMessage(message, duration) {
+    const messageDiv = document.createElement("div");
+    messageDiv.textContent = message;
+    messageDiv.style.position = "absolute";
+    messageDiv.style.top = `${app.renderer.height / 10}px`;
+    messageDiv.style.left = `${app.renderer.width / 10}px`;
+    messageDiv.style.width = "275px";
+    messageDiv.style.height = "30px";
+    messageDiv.style.fontSize = "24px";
+    messageDiv.style.textAlign = "center";
+    messageDiv.style.border = "3px solid #ffffff"; 
+    messageDiv.style.background = "rgba(0, 0, 0, 0.8)";
+    messageDiv.style.color = "#ffffff";
+    messageDiv.style.padding = "10px";
+    messageDiv.style.borderRadius = "10px";
+    messageDiv.style.outline = "none";
+    messageDiv.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.5)";
+    messageDiv.style.zIndex = "10000";
+    document.body.appendChild(messageDiv);
+    setTimeout(() => {
+        document.body.removeChild(messageDiv);
+    }, duration);
+}
+
 function gameOver(winner) {
     console.log("Game over");
     if (connectionToServer){
@@ -354,6 +389,12 @@ function connectToServer() {
             if (message.type == "game_over") {
                 console.log("Game over");
                 gameOver(message.winner);
+            }
+            if (message.type == "player_destroyed") {
+                destroyPlayer(message.player_id);
+            }
+            if (message.type == "message") {
+                showMessage(message.message, message.duration);
             }
 
         }
