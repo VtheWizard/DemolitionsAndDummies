@@ -141,7 +141,7 @@ window.addEventListener("keyup", (event)=>{
         case "d": p2velocityX = 0;              break;
         case "p": localPlayerBombDrop(1);       break;
         case "v": localPlayerBombDrop(2);       break;
-        case "i": gameOver();            break;
+        case "i": gameOver("testplayer");            break;
     }
 });
 
@@ -265,6 +265,7 @@ function spawnPlayer(playerID, playerPosition){
 function movePlayer(playerID, newPosition){
     if (playerID !== myPlayerID){
         playerList[playerID].position.set(newPosition[1] * onlineCellSize, newPosition[0] * onlineCellSize);
+        //add player name just a bit above the player position
     }
 }
 
@@ -272,8 +273,11 @@ function wrongMove(wrongPosition){
     Player1.position.set(wrongPosition[1] * onlineCellSize, wrongPosition[0] * onlineCellSize);
 }
 
-function gameOver() {
+function gameOver(winner) {
     console.log("Game over");
+    if (connectionToServer){
+        console.log("Game Winner: ", winner);
+    }
     const menuContainer = new Container();
     app.stage.addChild(menuContainer);
     const menuBackground = new Graphics()
@@ -329,7 +333,7 @@ function connectToServer() {
             }
             if (message.type == "game_over") {
                 console.log("Game over");
-                gameOver();
+                gameOver(message.winner);
             }
 
 
