@@ -40,11 +40,12 @@ type Bomb struct {
 }
 
 type GameRoom struct {
-	Grid    [][]int
-	Players map[*websocket.Conn][2]float64
-	Bombs   []Bomb
-	Mutex   sync.Mutex
-	State   string
+	Grid        [][]int
+	Players     map[*websocket.Conn][2]float64
+	PlayerNicks map[*websocket.Conn]string
+	Bombs       []Bomb
+	Mutex       sync.Mutex
+	State       string
 }
 
 var upgrader = websocket.Upgrader{
@@ -113,9 +114,10 @@ func assignRoom() string {
 	roomID := fmt.Sprintf("room-%d", roomCount)
 	roomCount++
 	gameRooms[roomID] = &GameRoom{
-		Grid:    createGrid(),
-		Players: make(map[*websocket.Conn][2]float64),
-		State:   "waiting",
+		Grid:        createGrid(),
+		Players:     make(map[*websocket.Conn][2]float64),
+		PlayerNicks: make(map[*websocket.Conn]string),
+		State:       "waiting",
 	}
 	return roomID
 }
@@ -408,9 +410,41 @@ func handleMessage(conn *websocket.Conn, room *GameRoom, messageData []byte) {
 		handleMovePlayer(conn, room, messageData)
 	case "bomb_set":
 		handleBombSet(conn, room)
+	case "set_player_nick":
+		handleSetPlayerNick(conn, room, messageData)
 	default:
 		log.Println("Unknown message type:", baseMsg.Type)
 	}
+}
+
+func handleSetPlayerNick(conn *websocket.Conn, room *GameRoom, messageData []byte) {
+	var nickMsg struct {
+		Type       string `json:"type"`
+		PlayerID   string `json:"player_id"`
+		PlayerNick string `json:"player_nick"`
+	}
+
+	if err := json.Unmarshal(messageData, &nickMsg); err != nil {
+		log.Println("Error decoding set player nick message:", err)
+		return
+	}
+
+	room.Mutex.Lock()
+	room.PlayerNicks[conn] = nickMsg.PlayerNick
+	room.Mutex.Unlock()
+
+	nickUpdate := struct {
+		Type       string `json:"type"`
+		PlayerID   string `json:"player_id"`
+		PlayerNick string `json:"player_nick"`
+	}{
+		Type:       "set_player_nick",
+		PlayerID:   nickMsg.PlayerID,
+		PlayerNick: nickMsg.PlayerNick,
+	}
+
+	broadcastToRoom(room, nickUpdate)
+	log.Printf("Player %s set their nickname to %s\n", nickMsg.PlayerID, nickMsg.PlayerNick)
 }
 
 func broadcastPlayerUpdate(room *GameRoom, sender *websocket.Conn, pos [2]float64) {
