@@ -29,6 +29,7 @@ const bombTexture = await Assets.load('/images/bomb.png');
 const onlineCellTextureEmpty =  await Assets.load('/images/onlineCellSpriteEmpty.png');
 const onlineCellTextureBreakable = await Assets.load('/images/onlineCellSpriteBreakable.png');
 const onlineCellTextureUnbreakable = await Assets.load('/images/onlineCellSpriteUnbreakable.png');
+const explosionTexture = await Assets.load('/images/explosion.png');
 const eventTarget = new EventTarget();
 const playerList = {};
 const textStyle = new TextStyle({
@@ -79,7 +80,7 @@ let myPlayerID = "0xc000000000";
 //----------------------------------------------------------------
 
 // creating grid for local game
-function createLocalGrid(){
+function createLocalGrid() {
     const localGridSprites = [];
     for (let row = 0; row < gridSize; row++) {
         localGridSprites[row] = [];
@@ -103,11 +104,11 @@ function createLocalGrid(){
             });
         }
     }
+    gridDeleted = false;
 }
 
-
 //function to remove a specific grid cell in local mode
-function removeLocalCell(col, row){
+function removeLocalCell(col, row) {
     if (localGridSprites[row] && localGridSprites[row][col]){
         app.stage.removeChild(localGridSprites[row][col]);
         localGridSprites[row][col] = null; //clear reference
@@ -141,7 +142,7 @@ window.addEventListener("keyup", (event)=>{
         case "d": p2velocityX = 0;              break;
         case "p": localPlayerBombDrop(1);       break;
         case "v": localPlayerBombDrop(2);       break;
-        case "i": gameOver("testplayer");            break;
+        case "NumLock": gameOver("testplayer");            break;
     }
 });
 
@@ -152,7 +153,7 @@ function deleteGrid() {
 }
 
 const onlineGridSprites =  [];
-function createOnlineGrid(cells){
+function createOnlineGrid(cells) {
     console.log("creating online grid with arrays");
     for (let row = 0; row < cells.length; row++) {
         onlineGridSprites[row] = [];
@@ -172,7 +173,6 @@ function createOnlineGrid(cells){
         }
     }
     Player1.position.set(10, 10);
-    //Player2.position.set(350,350);
 }
 
 //bomb dropping function. player center seems to be off by a few pixels for some reason...
@@ -225,6 +225,7 @@ function destroyCells(destroyedCells) {
         let row = destroyedCells[i][1];
         onlineGridSprites[col][row].texture = onlineCellTextureEmpty;
         console.log("destroyed cell; " + col + " " + row);
+        createExplosion(destroyedCells[i][1] * onlineCellSize + onlineCellSize / 2, destroyedCells[i][0] * onlineCellSize + onlineCellSize / 2);
     }
 }
 
@@ -235,10 +236,21 @@ function dropBomb(x,y) {
     app.stage.addChild(bomb);
     setTimeout(() => {
         app.stage.removeChild(bomb);
-    }, 2000);
+        createExplosion(x,y);
+    }, 2700);
 }
 
-function spawnPlayer(playerID, playerPosition){
+function createExplosion(x, y) {
+    const explosion = new Sprite(explosionTexture);
+    explosion.position.set(x, y);
+    explosion.anchor.set(0.5, 0.5)
+    app.stage.addChild(explosion);
+    setTimeout(() => {
+        app.stage.removeChild(explosion);
+    }, 300);
+}
+
+function spawnPlayer(playerID, playerPosition) {
     console.log("spawning player at: ", playerPosition);
     if (!playerList[playerID]){ //if player doesn't exist
         const newPlayer = new Graphics()
@@ -257,19 +269,23 @@ function spawnPlayer(playerID, playerPosition){
         app.stage.addChild(newPlayer);
         playerList[playerID] = newPlayer;
     }
-    if (playerID === myPlayerID){
+    if (playerID === myPlayerID) {
         Player1.position.set(playerPosition[1] * onlineCellSize, playerPosition[0] * onlineCellSize);
     } 
 }
 
-function movePlayer(playerID, newPosition){
+function movePlayer(playerID, newPosition) {
     if (playerID !== myPlayerID){
         playerList[playerID].position.set(newPosition[1] * onlineCellSize, newPosition[0] * onlineCellSize);
         //add player name just a bit above the player position
     }
 }
 
-function wrongMove(wrongPosition){
+function setNick(playerID, Nick) {
+    //playerList[playerID].name = Nick;
+}
+
+function wrongMove(wrongPosition) {
     Player1.position.set(wrongPosition[1] * onlineCellSize, wrongPosition[0] * onlineCellSize);
 }
 
@@ -292,6 +308,7 @@ function gameOver(winner) {
         console.log("player ready");
         createMenu();
         app.stage.removeChild(newGameButton);
+        app.stage.removeChild(menuContainer);
     })
     app.stage.addChild(newGameButton);
 }
@@ -325,17 +342,19 @@ function connectToServer() {
             if (message.type == "spawn_player") {
                 spawnPlayer(message.player_id, message.playerPosition);
             }
+            if (message.type == "set_player_nick") {
+                setNick(message.player_id, message.player_nick);
+            }
             if (message.type == "new_player_position") {
                 movePlayer(message.player_id, message.playerPosition);
             }
-            if (message.type == "moved_wrongly"){
+            if (message.type == "moved_wrongly") {
                 wrongMove(message.playerPosition);
             }
             if (message.type == "game_over") {
                 console.log("Game over");
                 gameOver(message.winner);
             }
-
 
         }
     }else{
@@ -384,7 +403,9 @@ function createMenu(){
     menuBackground.zIndex = 1000;
     const localButton = createButton("Local Multiplayer", app.renderer.width / 10, app.renderer.height / 4 - 60, () => {
         connectionToServer = false;
+        deleteGrid();
         createLocalGrid();
+        gridDeleted = false;
         app.stage.addChild(Player1);
         Player1.position.set(10,10);
         app.stage.addChild(Player2);
@@ -396,9 +417,12 @@ function createMenu(){
     const onlineButton = createButton("Online Multiplayer", app.renderer.width / 10, app.renderer.height / 4 + 60, () => {
             connectToServer();
             app.stage.removeChild(menuContainer);
+            app.stage.addChild(Player1);
+            Player1.position.set(10,10);
             playerName = nameInput.value.trim();
             console.log("player name: ",playerName);
             document.body.removeChild(nameInput);
+            deleteGrid();
         }
     );
     menuContainer.addChild(localButton);
@@ -455,6 +479,13 @@ app.ticker.add(() => {
             Player1.y -= p1velocityY * speedmodifier;
         } 
     }
+    if (Player1.x < 0){
+        Player1.x = 0;
+    }
+    if (Player1.y < 0){
+        Player1.y = 0;
+    }
+
     //checking if player1 moved to another cell
     let p1Row = ((Player1.y) / onlineCellSize); //remove Math.round when server can handle floats
     let p1Col = ((Player1.x) / onlineCellSize);
