@@ -152,8 +152,13 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		room.Mutex.Lock()
 		delete(room.Players, conn)
+		isEmpty := len(room.Players) == 0
 		room.Mutex.Unlock()
 		conn.Close()
+
+		if isEmpty {
+			removeRoom(roomID)
+		}
 	}()
 
 	for {
@@ -165,6 +170,13 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Received data from %s: %s (size: %d bytes)\n", conn.RemoteAddr(), string(p), len(p))
 		handleMessage(conn, room, p)
 	}
+}
+
+func removeRoom(roomID string) {
+	roomsLock.Lock()
+	defer roomsLock.Unlock()
+	delete(gameRooms, roomID)
+	log.Printf("Room %s removed\n", roomID)
 }
 
 func startGameWhenFull(room *GameRoom, roomID string) {
