@@ -20,6 +20,12 @@
 }
 
 {
+  "type": "set_player_nick",
+  "player_id": "0xc0000c0160",
+  "player_nick": "john"
+}
+
+{
   "type": "new_player_position",
   "player_id": "0xc0000c0160",
   "playerPosition": [1, 10]
