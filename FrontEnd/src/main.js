@@ -31,6 +31,37 @@ const onlineCellTextureBreakable = await Assets.load('/images/onlineCellSpriteBr
 const onlineCellTextureUnbreakable = await Assets.load('/images/onlineCellSpriteUnbreakable.png');
 const eventTarget = new EventTarget();
 const playerList = {};
+const textStyle = new TextStyle({
+    fontSize: 32,
+    fill: 0xffffff,
+    fontWeight: 'bold'
+})
+const Player1 = new Graphics()
+    .rect(0, 0, playerSize, playerSize) //x,y,width,height
+    .fill({
+    color: 0xff0000,
+    alpha: 0.9
+    })
+    .stroke({
+    color: 0x000000,
+    width: 2
+    });
+Player1.zIndex = 999;
+Player1.pivot.set(0.5, 0.5);
+
+const Player2 = new Graphics()
+    .rect(0, 0, playerSize, playerSize) //x,y,width,height
+    .fill({
+    color: 0x00ff00,
+    alpha: 0.9
+    })
+    .stroke({
+    color: 0x000000,
+    width: 2
+    });
+Player2.zIndex = 998;
+Player2.pivot.set(0.5, 0.5);
+
 let playerName = "dummy";
 let p1velocityX = 0;
 let p1velocityY = 0;
@@ -110,7 +141,7 @@ window.addEventListener("keyup", (event)=>{
         case "d": p2velocityX = 0;              break;
         case "p": localPlayerBombDrop(1);       break;
         case "v": localPlayerBombDrop(2);       break;
-        //case "i": testfunction();            break;
+        case "i": gameOver();            break;
     }
 });
 
@@ -241,6 +272,26 @@ function wrongMove(wrongPosition){
     Player1.position.set(wrongPosition[1] * onlineCellSize, wrongPosition[0] * onlineCellSize);
 }
 
+function gameOver() {
+    console.log("Game over");
+    const menuContainer = new Container();
+    app.stage.addChild(menuContainer);
+    const menuBackground = new Graphics()
+        .rect(0, 0, app.renderer.width, app.renderer.height)
+        .fill({
+        color: 0x000000,
+        alpha: 0.5
+        });
+    menuContainer.addChild(menuBackground);
+    menuBackground.zIndex = 1000;
+    const newGameButton = createButton("Play again?", app.renderer.width / 10, app.renderer.height / 4 - 60, () => {
+        console.log("player ready");
+        createMenu();
+        app.stage.removeChild(newGameButton);
+    })
+    app.stage.addChild(newGameButton);
+}
+
 function connectToServer() {
     if (!connectionToServer){
         socket = new WebSocket('ws://127.0.0.1:8080/ws');
@@ -276,61 +327,19 @@ function connectToServer() {
             if (message.type == "moved_wrongly"){
                 wrongMove(message.playerPosition);
             }
+            if (message.type == "game_over") {
+                console.log("Game over");
+                gameOver();
+            }
+
+
         }
     }else{
         console.log('already connected to server');
     }
 }
 
-const Player1 = new Graphics()
-    .rect(0, 0, playerSize, playerSize) //x,y,width,height
-    .fill({
-    color: 0xff0000,
-    alpha: 0.9
-    })
-    .stroke({
-    color: 0x000000,
-    width: 2
-    });
-Player1.zIndex = 999;
-Player1.pivot.set(0.5, 0.5);
-app.stage.addChild(Player1);
-Player1.position.set(10,10);
-
-const Player2 = new Graphics()
-    .rect(0, 0, playerSize, playerSize) //x,y,width,height
-    .fill({
-    color: 0x00ff00,
-    alpha: 0.9
-    })
-    .stroke({
-    color: 0x000000,
-    width: 2
-    });
-Player2.zIndex = 998;
-Player2.pivot.set(0.5, 0.5);
-app.stage.addChild(Player2);
-Player2.position.set(gridSize * gridSpriteSize - 30,gridSize * gridSpriteSize - 30);
-
 //----------------------------------------------------------------
-
-//making a menu
-const menuContainer = new Container();
-app.stage.addChild(menuContainer);
-const menuBackground = new Graphics()
-    .rect(0, 0, app.renderer.width, app.renderer.height)
-    .fill({
-    color: 0x000000,
-    alpha: 0.5
-    });
-menuContainer.addChild(menuBackground);
-menuBackground.zIndex = 1000;
-
-const textStyle = new TextStyle({
-    fontSize: 32,
-    fill: 0xffffff,
-    fontWeight: 'bold'
-})
 
 function createButton(label, x, y, callback) {
     const button = new Graphics()
@@ -358,49 +367,61 @@ function createButton(label, x, y, callback) {
     return button;
 }
 
-const localButton = createButton("Local Multiplayer", app.renderer.width / 10, app.renderer.height / 4 - 60, () => {
+function createMenu(){
+    const menuContainer = new Container();
+    app.stage.addChild(menuContainer);
+    const menuBackground = new Graphics()
+        .rect(0, 0, app.renderer.width, app.renderer.height)
+        .fill({
+        color: 0x000000,
+        alpha: 0.5
+        });
+    menuContainer.addChild(menuBackground);
+    menuBackground.zIndex = 1000;
+    const localButton = createButton("Local Multiplayer", app.renderer.width / 10, app.renderer.height / 4 - 60, () => {
         connectionToServer = false;
         createLocalGrid();
+        app.stage.addChild(Player1);
+        Player1.position.set(10,10);
+        app.stage.addChild(Player2);
+        Player2.position.set(gridSize * gridSpriteSize - 30,gridSize * gridSpriteSize - 30);
         app.stage.removeChild(menuContainer);
-        hideNameInput();
-    }
-);
-const onlineButton = createButton("Online Multiplayer", app.renderer.width / 10, app.renderer.height / 4 + 60, () => {
-        connectToServer();
-        app.stage.removeChild(menuContainer);
-        playerName = nameInput.value.trim();
-        console.log("player name: ",playerName);
-        hideNameInput();
-    }
-);
+        document.body.removeChild(nameInput);
+        }
+    );
+    const onlineButton = createButton("Online Multiplayer", app.renderer.width / 10, app.renderer.height / 4 + 60, () => {
+            connectToServer();
+            app.stage.removeChild(menuContainer);
+            playerName = nameInput.value.trim();
+            console.log("player name: ",playerName);
+            document.body.removeChild(nameInput);
+        }
+    );
+    menuContainer.addChild(localButton);
+    menuContainer.addChild(onlineButton);
 
-menuContainer.addChild(localButton);
-menuContainer.addChild(onlineButton);
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.placeholder = "Enter your name";
+    nameInput.style.position = "absolute";
+    nameInput.style.top = `${app.renderer.height / 4}px`;
+    nameInput.style.left = `${app.renderer.width / 10}px`;
+    nameInput.style.width = "275px";
+    nameInput.style.height = "30px";
+    nameInput.style.fontSize = "24px";
+    nameInput.style.textAlign = "center";
+    nameInput.style.border = "3px solid #ffffff"; 
+    nameInput.style.background = "rgba(0, 0, 0, 0.8)";
+    nameInput.style.color = "#ffffff";
+    nameInput.style.padding = "10px";
+    nameInput.style.borderRadius = "10px";
+    nameInput.style.outline = "none";
+    nameInput.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.5)";
+    nameInput.style.zIndex = "10000";
+    document.body.appendChild(nameInput);
 
-//making a name input for online multiplayer
-const nameInput = document.createElement("input");
-nameInput.type = "text";
-nameInput.placeholder = "Enter your name";
-nameInput.style.position = "absolute";
-nameInput.style.top = `${app.renderer.height / 4}px`;  // Position it between the buttons
-nameInput.style.left = `${app.renderer.width / 10}px`;
-nameInput.style.width = "275px";
-nameInput.style.height = "30px";  // Increased height for better visibility
-nameInput.style.fontSize = "24px";  // Larger font size for better visibility
-nameInput.style.textAlign = "center";
-nameInput.style.border = "3px solid #ffffff";  // Thicker border for more contrast
-nameInput.style.background = "rgba(0, 0, 0, 0.8)";  // Darker background for better contrast
-nameInput.style.color = "#ffffff";  // White text for better readability
-nameInput.style.padding = "10px";  // Padding for a better feel
-nameInput.style.borderRadius = "10px";  // Rounded corners for a more modern look
-nameInput.style.outline = "none";  // Remove default outline
-nameInput.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.5)";  // Shadow for depth
-nameInput.style.zIndex = "10000";  // Make sure the input is above other elements
-document.body.appendChild(nameInput);
-
-function hideNameInput() {
-    document.body.removeChild(nameInput);
 }
+createMenu();
 
 //---------------------------------------------------------------
 
