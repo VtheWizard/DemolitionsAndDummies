@@ -26,6 +26,14 @@
 }
 
 {
+  "type": "game_starting",
+}
+
+{
+  "type": "game_started",
+}
+
+{
   "type": "players_hit",
   "player_ids": ["0xc0000c0160", "0xc0000c62c0"],
 }

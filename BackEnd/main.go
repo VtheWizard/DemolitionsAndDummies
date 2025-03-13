@@ -185,12 +185,28 @@ func startGameWhenFull(room *GameRoom, roomID string) {
 	room.Mutex.Lock()
 	if len(room.Players) == maxPlayers {
 		room.State = "starting"
+		log.Printf("Room %s state changed to starting\n", roomID)
+		gameStartingMessage := struct {
+			Type string `json:"type"`
+		}{
+			Type: "game_starting",
+		}
+		room.Mutex.Unlock()
+		broadcastToRoom(room, gameStartingMessage)
+		room.Mutex.Lock()
 		go func(room *GameRoom) {
 			time.Sleep(3 * time.Second)
 			room.Mutex.Lock()
 			room.State = "ongoing"
 			room.Mutex.Unlock()
 			log.Printf("Room %s state changed to ongoing\n", roomID)
+
+			gameStartedMessage := struct {
+				Type string `json:"type"`
+			}{
+				Type: "game_started",
+			}
+			broadcastToRoom(room, gameStartedMessage)
 		}(room)
 	}
 	room.Mutex.Unlock()
