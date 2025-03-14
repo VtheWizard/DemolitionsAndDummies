@@ -26,6 +26,28 @@
 }
 
 {
+  "type": "game_starting",
+}
+
+{
+  "type": "game_started",
+}
+
+{
+  "type": "players_hit",
+  "player_ids": ["0xc0000c0160", "0xc0000c62c0"],
+}
+
+{
+  "type": "game_won",
+  "player_id": "0xc0000c0160",
+}
+
+{
+  "type": "no_winner",
+}
+
+{
   "type": "new_player_position",
   "player_id": "0xc0000c0160",
   "playerPosition": [1, 10]

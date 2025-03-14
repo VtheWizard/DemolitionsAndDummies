@@ -43,6 +43,7 @@ type GameRoom struct {
 	Grid        [][]int
 	Players     map[*websocket.Conn][2]float64
 	PlayerNicks map[*websocket.Conn]string
+	Spectators  map[*websocket.Conn]bool
 	Bombs       []Bomb
 	Mutex       sync.Mutex
 	State       string
@@ -117,6 +118,7 @@ func assignRoom() string {
 		Grid:        createGrid(),
 		Players:     make(map[*websocket.Conn][2]float64),
 		PlayerNicks: make(map[*websocket.Conn]string),
+		Spectators:  make(map[*websocket.Conn]bool),
 		State:       "waiting",
 	}
 	return roomID
@@ -183,12 +185,28 @@ func startGameWhenFull(room *GameRoom, roomID string) {
 	room.Mutex.Lock()
 	if len(room.Players) == maxPlayers {
 		room.State = "starting"
+		log.Printf("Room %s state changed to starting\n", roomID)
+		gameStartingMessage := struct {
+			Type string `json:"type"`
+		}{
+			Type: "game_starting",
+		}
+		room.Mutex.Unlock()
+		broadcastToRoom(room, gameStartingMessage)
+		room.Mutex.Lock()
 		go func(room *GameRoom) {
 			time.Sleep(3 * time.Second)
 			room.Mutex.Lock()
 			room.State = "ongoing"
 			room.Mutex.Unlock()
 			log.Printf("Room %s state changed to ongoing\n", roomID)
+
+			gameStartedMessage := struct {
+				Type string `json:"type"`
+			}{
+				Type: "game_started",
+			}
+			broadcastToRoom(room, gameStartedMessage)
 		}(room)
 	}
 	room.Mutex.Unlock()
@@ -371,7 +389,60 @@ func explodeBomb(room *GameRoom, pos [2]int) {
 		BombPosition: [2]int{pos[0], pos[1]},
 	}
 	broadcastToRoom(room, explosionMessage)
+	checkPlayersHit(room, pos)
 	destroyWalls(room, pos)
+}
+
+func checkPlayersHit(room *GameRoom, bombPos [2]int) {
+	room.Mutex.Lock()
+	hitPlayers := []string{}
+	for playerConn, playerPos := range room.Players {
+		intPlayerPos := [2]int{int(playerPos[0]), int(playerPos[1])}
+		if isAdjacentOrSame(intPlayerPos, bombPos) {
+			log.Printf("Player %p hit by bomb\n", playerConn)
+			room.Spectators[playerConn] = true
+			delete(room.Players, playerConn)
+			hitPlayers = append(hitPlayers, fmt.Sprintf("%p", playerConn))
+		}
+	}
+	remainingPlayers := len(room.Players)
+	room.Mutex.Unlock()
+
+	if len(hitPlayers) > 0 {
+		hitPlayersMessage := struct {
+			Type      string   `json:"type"`
+			PlayerIDs []string `json:"player_ids"`
+		}{
+			Type:      "players_hit",
+			PlayerIDs: hitPlayers,
+		}
+		broadcastToRoom(room, hitPlayersMessage)
+	}
+
+	if remainingPlayers == 1 {
+		var winnerConn *websocket.Conn
+		for playerConn := range room.Players {
+			winnerConn = playerConn
+			break
+		}
+		winnerMessage := struct {
+			Type     string `json:"type"`
+			PlayerID string `json:"player_id"`
+		}{
+			Type:     "game_won",
+			PlayerID: fmt.Sprintf("%p", winnerConn),
+		}
+		broadcastToRoom(room, winnerMessage)
+		log.Println("Player", fmt.Sprintf("%p", winnerConn), "won the game")
+	} else if remainingPlayers == 0 {
+		noWinnerMessage := struct {
+			Type string `json:"type"`
+		}{
+			Type: "no_winner",
+		}
+		broadcastToRoom(room, noWinnerMessage)
+		log.Println("No players remaining in the room, no one won")
+	}
 }
 
 func destroyWalls(room *GameRoom, pos [2]int) {
@@ -416,6 +487,12 @@ func handleMessage(conn *websocket.Conn, room *GameRoom, messageData []byte) {
 		return
 	}
 	room.Mutex.Unlock()
+
+	// ignore messages from spectators
+	if room.Spectators[conn] {
+		log.Println("Spectator message ignored:", baseMsg.Type)
+		return
+	}
 
 	switch baseMsg.Type {
 	case "new_player_position":
@@ -475,6 +552,9 @@ func broadcastToRoom(room *GameRoom, message interface{}) {
 	defer room.Mutex.Unlock()
 	for player := range room.Players {
 		player.WriteJSON(message)
+	}
+	for spectator := range room.Spectators {
+		spectator.WriteJSON(message)
 	}
 }
 
