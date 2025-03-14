@@ -457,12 +457,12 @@ function createMenu(){
     );
     const onlineButton = createButton("Online Multiplayer", app.renderer.width / 10, app.renderer.height / 4 + 60, () => {
             connectToServer();
-            app.stage.removeChild(menuContainer);
             app.stage.addChild(Player1);
             Player1.position.set(10,10);
             playerName = nameInput.value.trim();
             console.log("player name: ",playerName);
             document.body.removeChild(nameInput);
+            app.stage.removeChild(menuContainer);
             deleteGrid();
         }
     );
@@ -506,7 +506,7 @@ app.ticker.add(() => {
     Player1.x += p1velocityX * speedmodifier;
     Player1.y += p1velocityY * speedmodifier;
     //added if gridDeleted to unrestrict the local games boundaries
-    if (gridDeleted === false) {
+    if (connectionToServer === true) {
         if (Player1.x < 0){
             Player1.x -= p1velocityX * speedmodifier;
         }
@@ -531,7 +531,7 @@ app.ticker.add(() => {
     let p1Row = ((Player1.y) / onlineCellSize); //remove Math.round when server can handle floats
     let p1Col = ((Player1.x) / onlineCellSize);
 
-    if (gridDeleted !==false) {
+    if (connectionToServer !==false) {
         if (p1Row !== lastSentPosition.row || p1Col !== lastSentPosition.col){
             let message = JSON.stringify({type: "new_player_position", playerPosition: [lastSentPosition.row, lastSentPosition.col]});
             socket.send(message);
