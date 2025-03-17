@@ -75,6 +75,8 @@ let socket;
 let onlineTexture;
 let gridDeleted = false;
 let myPlayerID = "0xc000000000";
+let player1ID = "0xc000000001";
+let player2ID = "0xc000000002";
 
 
 //----------------------------------------------------------------
@@ -130,7 +132,7 @@ window.addEventListener("keydown", (event)=>{
 });
 
 window.addEventListener("keyup", (event)=>{
-    //player 1 on arrows and player 2 on wasd, bomb drops are on v and p keys respectively
+    //player 1 on arrows and player 2 on wasd, bomb drops are on p and v keys respectively
     switch (event.key) {
         case "ArrowUp": p1velocityY = 0;        break;
         case "ArrowDown": p1velocityY = 0;      break;
@@ -142,7 +144,7 @@ window.addEventListener("keyup", (event)=>{
         case "d": p2velocityX = 0;              break;
         case "p": localPlayerBombDrop(1);       break;
         case "v": localPlayerBombDrop(2);       break;
-        case "NumLock": gameOver("testplayer");            break;
+        case "NumLock": gameOver("testplayer"); break;
     }
 });
 
@@ -329,6 +331,10 @@ function gameOver(winner) {
     if (connectionToServer){
         console.log("Game Winner: ", winner);
     }
+    for (let player in playerList) {
+        app.stage.removeChild(playerList[player]);
+        delete playerList[player];
+    }
     const menuContainer = new Container();
     app.stage.addChild(menuContainer);
     const menuBackground = new Graphics()
@@ -386,9 +392,10 @@ function connectToServer() {
             if (message.type == "moved_wrongly") {
                 wrongMove(message.playerPosition);
             }
-            if (message.type == "game_over") {
+            if (message.type == "game_won") {
                 console.log("Game over");
-                gameOver(message.winner);
+                gameOver(message.player_id);
+                showMessage("Game Over", 4000);
             }
             if (message.type == "player_destroyed") {
                 destroyPlayer(message.player_id);
@@ -451,6 +458,8 @@ function createMenu(){
         Player1.position.set(10,10);
         app.stage.addChild(Player2);
         Player2.position.set(gridSize * gridSpriteSize - 30,gridSize * gridSpriteSize - 30);
+        playerList[player1ID] = Player1;
+        playerList[player2ID] = Player2;
         app.stage.removeChild(menuContainer);
         document.body.removeChild(nameInput);
         }
