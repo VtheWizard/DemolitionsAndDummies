@@ -63,6 +63,18 @@ const Player2 = new Graphics()
 Player2.zIndex = 998;
 Player2.pivot.set(0.5, 0.5);
 
+//mobile stuff
+const mobileButtonOffset = 475
+const mobileButtonSize = 100;
+const mobileButtonPositions = {
+    up:     { x: 215, y: 110 + mobileButtonOffset },
+    left:   { x: 110, y: 215 + mobileButtonOffset },
+    bomb:   { x: 215, y: 215 + mobileButtonOffset },
+    right:  { x: 320, y: 215 + mobileButtonOffset },
+    down:   { x: 215, y: 320 + mobileButtonOffset },
+    reset:  { x: 360, y: 360 + mobileButtonOffset }
+};
+
 let playerName = "dummy";
 let p1velocityX = 0;
 let p1velocityY = 0;
@@ -426,6 +438,7 @@ function connectToServer() {
     }
     eventTarget.addEventListener('disconnect', (event) => {
         socket.close();
+        connectionToServer = false;
         console.log("disconnected from server due to game ending");
     });
 }
@@ -520,6 +533,96 @@ function createMenu(){
 
 }
 createMenu();
+
+//creating buttons for mobile users...
+
+function createMobileButton(label, x, y) {
+    const button = new Container();
+    const graphics = new Graphics();
+    graphics
+        .rect(0, 0, mobileButtonSize, mobileButtonSize, 10)
+        .fill({
+            color: 0x667788,
+            alpha: 0.9
+        })
+        .stroke({
+            color: 0x000000,
+            width: 2
+        });
+    console.log(`Graphics for "${label}"`, graphics);
+    graphics.eventMode = "static";
+    graphics.cursor = "pointer";
+    button.addChild(graphics);
+    const mobileTextstyle = new TextStyle({
+        fontFamily: 'Arial',
+        fontSize: 20,
+        fill: 0xffffff,
+        align: 'center'
+    })
+    const text = new Text({text: label, style: mobileTextstyle});
+    text.anchor.set(0.5);
+    text.x = mobileButtonSize / 2;
+    text.y = mobileButtonSize / 2;
+    button.addChild(text);
+    button.x = x;
+    button.y = y;
+    button.interactive = true;
+    
+    button.on('pointerdown', () => {
+        console.log(`${label} button pressed`);
+        if (label === "up") {
+            //move up
+            p1velocityY = -speed;
+        }
+        if (label === "down") {
+            //move down
+            p1velocityY = speed;
+        }
+        if (label === "left") {
+            //move left
+            p1velocityX = -speed;
+        }
+        if (label === "right") {
+            //move right
+            p1velocityX = speed;
+        }
+    });
+    button.on('pointerup', () => {
+        //opposite stuff now...
+        console.log(`${label} button released`);
+        if (label === "up") {
+            //move up
+            p1velocityY = 0;
+        }
+        if (label === "down") {
+            //move down
+            p1velocityY = 0;
+        }
+        if (label === "left") {
+            //move left
+            p1velocityX = 0;
+        }
+        if (label === "right") {
+            //move right
+            p1velocityX = 0;
+        }
+        if (label === "bomb") {
+            //drop bomb
+            localPlayerBombDrop(1);
+        }
+        if (label === "reset") {
+            //reset game
+            console.log("resetting game");
+            gameOver("testplayer")
+        }
+    });
+    app.stage.addChild(button);
+}
+
+for (const [key, pos] of Object.entries(mobileButtonPositions)){
+    createMobileButton(key, pos.x, pos.y)
+}
+
 
 //---------------------------------------------------------------
 
