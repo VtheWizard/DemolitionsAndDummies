@@ -154,7 +154,7 @@ window.addEventListener("keyup", (event)=>{
         case "s": p2velocityY = 0;              break;
         case "a": p2velocityX = 0;              break;
         case "d": p2velocityX = 0;              break;
-        case "p": localPlayerBombDrop(1);       break;
+        case " ": localPlayerBombDrop(1);       break;
         case "v": localPlayerBombDrop(2);       break;
         case "NumLock": gameOver("testplayer"); break;
     }
