@@ -330,6 +330,8 @@ function gameOver(winner) {
     console.log("Game over");
     if (connectionToServer){
         console.log("Game Winner: ", winner);
+        const event = new CustomEvent('disconnect');
+        eventTarget.dispatchEvent(event);
     }
     for (let player in playerList) {
         app.stage.removeChild(playerList[player]);
@@ -398,6 +400,12 @@ function connectToServer() {
                 let gameOverMessage = "game winner; " + message.player_id;
                 showMessage(gameOverMessage, 4000);
             }
+            if (message.type == "no_winner") {
+                console.log("Game over, no winner");
+                gameOver("no winner");
+                let gameOverMessage = "No Winners";
+                showMessage(gameOverMessage, 4000);
+            }
             if (message.type == "player_destroyed") {
                 destroyPlayer(message.player_id);
             }
@@ -416,6 +424,10 @@ function connectToServer() {
     }else{
         console.log('already connected to server');
     }
+    eventTarget.addEventListener('disconnect', (event) => {
+        socket.disconnect();
+        console.log("disconnected from server due to game ending");
+    });
 }
 
 //----------------------------------------------------------------
