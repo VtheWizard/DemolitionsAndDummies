@@ -454,6 +454,8 @@ func destroyWalls(room *GameRoom, pos [2]int) {
 		if newX >= 0 && newX < len(room.Grid) && newY >= 0 && newY < len(room.Grid[0]) {
 			if room.Grid[newX][newY] == 1 {
 				room.Grid[newX][newY] = 0
+			}
+			if room.Grid[newX][newY] != 2 {
 				destroyedCells = append(destroyedCells, [2]int{newX, newY})
 			}
 		}
