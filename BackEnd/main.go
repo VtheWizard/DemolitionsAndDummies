@@ -40,10 +40,13 @@ type Bomb struct {
 }
 
 type GameRoom struct {
-	Grid    [][]int
-	Players map[*websocket.Conn][2]float64
-	Bombs   []Bomb
-	Mutex   sync.Mutex
+	Grid        [][]int
+	Players     map[*websocket.Conn][2]float64
+	PlayerNicks map[*websocket.Conn]string
+	Spectators  map[*websocket.Conn]bool
+	Bombs       []Bomb
+	Mutex       sync.Mutex
+	State       string
 }
 
 var upgrader = websocket.Upgrader{
@@ -102,7 +105,7 @@ func assignRoom() string {
 
 	for roomID, room := range gameRooms {
 		room.Mutex.Lock()
-		if len(room.Players) < maxPlayers {
+		if len(room.Players) < maxPlayers && room.State == "waiting" {
 			room.Mutex.Unlock()
 			return roomID
 		}
@@ -112,58 +115,106 @@ func assignRoom() string {
 	roomID := fmt.Sprintf("room-%d", roomCount)
 	roomCount++
 	gameRooms[roomID] = &GameRoom{
-		Grid:    createGrid(),
-		Players: make(map[*websocket.Conn][2]float64),
+		Grid:        createGrid(),
+		Players:     make(map[*websocket.Conn][2]float64),
+		PlayerNicks: make(map[*websocket.Conn]string),
+		Spectators:  make(map[*websocket.Conn]bool),
+		State:       "waiting",
 	}
 	return roomID
 }
 
 func handleConnection(w http.ResponseWriter, r *http.Request) {
-	roomID := assignRoom()
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Upgrade error:", err)
 		return
 	}
 	log.Println("New connection from", conn.RemoteAddr())
+
+	// assign room to new connection
+	roomID := assignRoom()
 	room := gameRooms[roomID]
-	gridMessage := GridMessage{
-		Type:  "grid_init",
-		Cells: room.Grid,
-	}
-	conn.WriteJSON(gridMessage)
-	log.Printf("Sending grid message: %+v\n", gridMessage)
 
-	type PlayerIDMessage struct {
-		Type     string `json:"type"`
-		PlayerID string `json:"player_id"`
-	}
+	// send grid to new connection
+	sendGrid(conn, room)
 
-	// send new player their id
-	playerID := fmt.Sprintf("%p", conn)
-	message := PlayerIDMessage{
-		Type:     "player_id",
-		PlayerID: playerID,
-	}
+	// send player id to new connection
+	sendPlayerID(conn)
 
-	log.Printf("Sending player ID message: %+v\n", message)
+	// send info of existing players to new connection
+	sendExistingPlayers(conn, room)
 
-	err = conn.WriteJSON(message)
-	if err != nil {
-		log.Println("Error sending player ID:", err)
-		return
-	}
+	// send info of new player to everyone in room
+	sendNewPlayerToRoom(conn, room)
 
-	// sends players that are in room to new connection.
-	for existingConn, pos := range room.Players {
-		playerUpdate := PlayerUpdateMessage{
-			Type:           "spawn_player",
-			PlayerID:       fmt.Sprintf("%p", existingConn),
-			PlayerPosition: [2]float64{float64(pos[0]), float64(pos[1])},
+	// start game when room is full
+	startGameWhenFull(room, roomID)
+
+	defer func() {
+		room.Mutex.Lock()
+		delete(room.Players, conn)
+		isEmpty := len(room.Players) == 0
+		room.Mutex.Unlock()
+		conn.Close()
+
+		if isEmpty {
+			removeRoom(roomID)
 		}
-		conn.WriteJSON(playerUpdate)
-	}
+	}()
 
+	for {
+		_, p, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("Read error from", conn.RemoteAddr(), ":", err)
+			break
+		}
+		log.Printf("Received data from %s: %s (size: %d bytes)\n", conn.RemoteAddr(), string(p), len(p))
+		handleMessage(conn, room, p)
+	}
+}
+
+func removeRoom(roomID string) {
+	roomsLock.Lock()
+	defer roomsLock.Unlock()
+	delete(gameRooms, roomID)
+	log.Printf("Room %s removed\n", roomID)
+}
+
+func startGameWhenFull(room *GameRoom, roomID string) {
+	room.Mutex.Lock()
+	if len(room.Players) == maxPlayers {
+		room.State = "starting"
+		log.Printf("Room %s state changed to starting\n", roomID)
+		gameStartingMessage := struct {
+			Type string `json:"type"`
+		}{
+			Type: "game_starting",
+		}
+		room.Mutex.Unlock()
+		broadcastToRoom(room, gameStartingMessage)
+		room.Mutex.Lock()
+		go func(room *GameRoom) {
+			time.Sleep(3 * time.Second)
+			room.Mutex.Lock()
+			room.State = "ongoing"
+			room.Mutex.Unlock()
+			log.Printf("Room %s state changed to ongoing\n", roomID)
+
+			gameStartedMessage := struct {
+				Type string `json:"type"`
+			}{
+				Type: "game_started",
+			}
+			broadcastToRoom(room, gameStartedMessage)
+		}(room)
+	}
+	room.Mutex.Unlock()
+
+	log.Printf("Room %s has %d players\n", roomID, len(room.Players))
+}
+
+func sendNewPlayerToRoom(conn *websocket.Conn, room *GameRoom) {
 	spawnPositions := [][2]float64{
 		{0, 0}, {0, 10},
 		{10, 0}, {10, 10},
@@ -175,30 +226,53 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	room.Players[conn] = spawnPosition
 	room.Mutex.Unlock()
 
-	defer func() {
-		room.Mutex.Lock()
-		delete(room.Players, conn)
-		room.Mutex.Unlock()
-		conn.Close()
-	}()
-
-	// sends info of new player to everyone in room.
 	newPlayerUpdate := PlayerUpdateMessage{
 		Type:           "spawn_player",
 		PlayerID:       fmt.Sprintf("%p", conn),
 		PlayerPosition: [2]float64{float64(spawnPosition[0]), float64(spawnPosition[1])},
 	}
 	broadcastToRoom(room, newPlayerUpdate)
+}
 
-	for {
-		_, p, err := conn.ReadMessage()
-		if err != nil {
-			log.Println("Read error from", conn.RemoteAddr(), ":", err)
-			break
+func sendExistingPlayers(conn *websocket.Conn, room *GameRoom) {
+	for existingConn, pos := range room.Players {
+		playerUpdate := PlayerUpdateMessage{
+			Type:           "spawn_player",
+			PlayerID:       fmt.Sprintf("%p", existingConn),
+			PlayerPosition: [2]float64{float64(pos[0]), float64(pos[1])},
 		}
-		log.Printf("Received data from %s: %s (size: %d bytes)\n", conn.RemoteAddr(), string(p), len(p))
-		handleMessage(conn, room, p)
+		conn.WriteJSON(playerUpdate)
 	}
+}
+
+func sendPlayerID(conn *websocket.Conn) {
+	type PlayerIDMessage struct {
+		Type     string `json:"type"`
+		PlayerID string `json:"player_id"`
+	}
+
+	playerID := fmt.Sprintf("%p", conn)
+	message := PlayerIDMessage{
+		Type:     "player_id",
+		PlayerID: playerID,
+	}
+	err := conn.WriteJSON(message)
+	if err != nil {
+		log.Println("Error sending player ID:", err)
+		return
+	}
+
+	log.Printf("Sending player ID message: %+v\n", message)
+
+}
+
+func sendGrid(conn *websocket.Conn, room *GameRoom) {
+	gridMessage := GridMessage{
+		Type:  "grid_init",
+		Cells: room.Grid,
+	}
+	conn.WriteJSON(gridMessage)
+	log.Printf("Sending grid message: %+v\n", gridMessage)
 }
 
 func handleMovePlayer(conn *websocket.Conn, room *GameRoom, messageData []byte) {
@@ -315,7 +389,60 @@ func explodeBomb(room *GameRoom, pos [2]int) {
 		BombPosition: [2]int{pos[0], pos[1]},
 	}
 	broadcastToRoom(room, explosionMessage)
+	checkPlayersHit(room, pos)
 	destroyWalls(room, pos)
+}
+
+func checkPlayersHit(room *GameRoom, bombPos [2]int) {
+	room.Mutex.Lock()
+	hitPlayers := []string{}
+	for playerConn, playerPos := range room.Players {
+		intPlayerPos := [2]int{int(playerPos[0]), int(playerPos[1])}
+		if isAdjacentOrSame(intPlayerPos, bombPos) {
+			log.Printf("Player %p hit by bomb\n", playerConn)
+			room.Spectators[playerConn] = true
+			delete(room.Players, playerConn)
+			hitPlayers = append(hitPlayers, fmt.Sprintf("%p", playerConn))
+		}
+	}
+	remainingPlayers := len(room.Players)
+	room.Mutex.Unlock()
+
+	if len(hitPlayers) > 0 {
+		hitPlayersMessage := struct {
+			Type      string   `json:"type"`
+			PlayerIDs []string `json:"player_ids"`
+		}{
+			Type:      "players_hit",
+			PlayerIDs: hitPlayers,
+		}
+		broadcastToRoom(room, hitPlayersMessage)
+	}
+
+	if remainingPlayers == 1 {
+		var winnerConn *websocket.Conn
+		for playerConn := range room.Players {
+			winnerConn = playerConn
+			break
+		}
+		winnerMessage := struct {
+			Type     string `json:"type"`
+			PlayerID string `json:"player_id"`
+		}{
+			Type:     "game_won",
+			PlayerID: fmt.Sprintf("%p", winnerConn),
+		}
+		broadcastToRoom(room, winnerMessage)
+		log.Println("Player", fmt.Sprintf("%p", winnerConn), "won the game")
+	} else if remainingPlayers == 0 {
+		noWinnerMessage := struct {
+			Type string `json:"type"`
+		}{
+			Type: "no_winner",
+		}
+		broadcastToRoom(room, noWinnerMessage)
+		log.Println("No players remaining in the room, no one won")
+	}
 }
 
 func destroyWalls(room *GameRoom, pos [2]int) {
@@ -352,14 +479,61 @@ func handleMessage(conn *websocket.Conn, room *GameRoom, messageData []byte) {
 		return
 	}
 
+	// ignore messages if room is not ongoing
+	room.Mutex.Lock()
+	if room.State != "ongoing" {
+		room.Mutex.Unlock()
+		log.Println("Room state is not ongoing, message ignored:", baseMsg.Type)
+		return
+	}
+	room.Mutex.Unlock()
+
+	// ignore messages from spectators
+	if room.Spectators[conn] {
+		log.Println("Spectator message ignored:", baseMsg.Type)
+		return
+	}
+
 	switch baseMsg.Type {
 	case "new_player_position":
 		handleMovePlayer(conn, room, messageData)
 	case "bomb_set":
 		handleBombSet(conn, room)
+	case "set_player_nick":
+		handleSetPlayerNick(conn, room, messageData)
 	default:
 		log.Println("Unknown message type:", baseMsg.Type)
 	}
+}
+
+func handleSetPlayerNick(conn *websocket.Conn, room *GameRoom, messageData []byte) {
+	var nickMsg struct {
+		Type       string `json:"type"`
+		PlayerID   string `json:"player_id"`
+		PlayerNick string `json:"player_nick"`
+	}
+
+	if err := json.Unmarshal(messageData, &nickMsg); err != nil {
+		log.Println("Error decoding set player nick message:", err)
+		return
+	}
+
+	room.Mutex.Lock()
+	room.PlayerNicks[conn] = nickMsg.PlayerNick
+	room.Mutex.Unlock()
+
+	nickUpdate := struct {
+		Type       string `json:"type"`
+		PlayerID   string `json:"player_id"`
+		PlayerNick string `json:"player_nick"`
+	}{
+		Type:       "set_player_nick",
+		PlayerID:   nickMsg.PlayerID,
+		PlayerNick: nickMsg.PlayerNick,
+	}
+
+	broadcastToRoom(room, nickUpdate)
+	log.Printf("Player %s set their nickname to %s\n", nickMsg.PlayerID, nickMsg.PlayerNick)
 }
 
 func broadcastPlayerUpdate(room *GameRoom, sender *websocket.Conn, pos [2]float64) {
@@ -378,6 +552,9 @@ func broadcastToRoom(room *GameRoom, message interface{}) {
 	defer room.Mutex.Unlock()
 	for player := range room.Players {
 		player.WriteJSON(message)
+	}
+	for spectator := range room.Spectators {
+		spectator.WriteJSON(message)
 	}
 }
 

@@ -75,6 +75,8 @@ let socket;
 let onlineTexture;
 let gridDeleted = false;
 let myPlayerID = "0xc000000000";
+let player1ID = "0xc000000001";
+let player2ID = "0xc000000002";
 
 
 //----------------------------------------------------------------
@@ -130,7 +132,7 @@ window.addEventListener("keydown", (event)=>{
 });
 
 window.addEventListener("keyup", (event)=>{
-    //player 1 on arrows and player 2 on wasd, bomb drops are on v and p keys respectively
+    //player 1 on arrows and player 2 on wasd, bomb drops are on p and v keys respectively
     switch (event.key) {
         case "ArrowUp": p1velocityY = 0;        break;
         case "ArrowDown": p1velocityY = 0;      break;
@@ -142,7 +144,7 @@ window.addEventListener("keyup", (event)=>{
         case "d": p2velocityX = 0;              break;
         case "p": localPlayerBombDrop(1);       break;
         case "v": localPlayerBombDrop(2);       break;
-        case "NumLock": gameOver("testplayer");            break;
+        case "NumLock": gameOver("testplayer"); break;
     }
 });
 
@@ -282,7 +284,7 @@ function movePlayer(playerID, newPosition) {
 }
 
 function setNick(playerID, Nick) {
-    //playerList[playerID].name = Nick;
+    playerList[playerID].name = Nick;
 }
 
 function wrongMove(wrongPosition) {
@@ -306,7 +308,7 @@ function showMessage(message, duration) {
     messageDiv.style.position = "absolute";
     messageDiv.style.top = `${app.renderer.height / 10}px`;
     messageDiv.style.left = `${app.renderer.width / 10}px`;
-    messageDiv.style.width = "275px";
+    messageDiv.style.width = "fit-content";
     messageDiv.style.height = "30px";
     messageDiv.style.fontSize = "24px";
     messageDiv.style.textAlign = "center";
@@ -328,6 +330,10 @@ function gameOver(winner) {
     console.log("Game over");
     if (connectionToServer){
         console.log("Game Winner: ", winner);
+    }
+    for (let player in playerList) {
+        app.stage.removeChild(playerList[player]);
+        delete playerList[player];
     }
     const menuContainer = new Container();
     app.stage.addChild(menuContainer);
@@ -386,15 +392,24 @@ function connectToServer() {
             if (message.type == "moved_wrongly") {
                 wrongMove(message.playerPosition);
             }
-            if (message.type == "game_over") {
+            if (message.type == "game_won") {
                 console.log("Game over");
-                gameOver(message.winner);
+                gameOver(message.player_id);
+                let gameOverMessage = "game winner; " + message.player_id;
+                showMessage(gameOverMessage, 4000);
             }
             if (message.type == "player_destroyed") {
                 destroyPlayer(message.player_id);
             }
             if (message.type == "message") {
                 showMessage(message.message, message.duration);
+            }
+            if (message.type == "game_starting") {
+                showMessage("Game Starting", 2000);
+            }
+            if (message.type == "game_started") {
+                console.log("Game Started");
+                showMessage("Game Started", 1000)
             }
 
         }
@@ -451,18 +466,20 @@ function createMenu(){
         Player1.position.set(10,10);
         app.stage.addChild(Player2);
         Player2.position.set(gridSize * gridSpriteSize - 30,gridSize * gridSpriteSize - 30);
+        playerList[player1ID] = Player1;
+        playerList[player2ID] = Player2;
         app.stage.removeChild(menuContainer);
         document.body.removeChild(nameInput);
         }
     );
     const onlineButton = createButton("Online Multiplayer", app.renderer.width / 10, app.renderer.height / 4 + 60, () => {
             connectToServer();
-            app.stage.removeChild(menuContainer);
             app.stage.addChild(Player1);
             Player1.position.set(10,10);
             playerName = nameInput.value.trim();
             console.log("player name: ",playerName);
             document.body.removeChild(nameInput);
+            app.stage.removeChild(menuContainer);
             deleteGrid();
         }
     );
@@ -506,7 +523,7 @@ app.ticker.add(() => {
     Player1.x += p1velocityX * speedmodifier;
     Player1.y += p1velocityY * speedmodifier;
     //added if gridDeleted to unrestrict the local games boundaries
-    if (gridDeleted === false) {
+    if (connectionToServer === true) {
         if (Player1.x < 0){
             Player1.x -= p1velocityX * speedmodifier;
         }
@@ -531,7 +548,7 @@ app.ticker.add(() => {
     let p1Row = ((Player1.y) / onlineCellSize); //remove Math.round when server can handle floats
     let p1Col = ((Player1.x) / onlineCellSize);
 
-    if (gridDeleted !==false) {
+    if (connectionToServer !==false) {
         if (p1Row !== lastSentPosition.row || p1Col !== lastSentPosition.col){
             let message = JSON.stringify({type: "new_player_position", playerPosition: [lastSentPosition.row, lastSentPosition.col]});
             socket.send(message);
