@@ -425,7 +425,7 @@ function connectToServer() {
         console.log('already connected to server');
     }
     eventTarget.addEventListener('disconnect', (event) => {
-        socket.disconnect();
+        socket.close();
         console.log("disconnected from server due to game ending");
     });
 }
