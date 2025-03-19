@@ -284,7 +284,7 @@ function movePlayer(playerID, newPosition) {
 }
 
 function setNick(playerID, Nick) {
-    //playerList[playerID].name = Nick;
+    playerList[playerID].name = Nick;
 }
 
 function wrongMove(wrongPosition) {
@@ -308,7 +308,7 @@ function showMessage(message, duration) {
     messageDiv.style.position = "absolute";
     messageDiv.style.top = `${app.renderer.height / 10}px`;
     messageDiv.style.left = `${app.renderer.width / 10}px`;
-    messageDiv.style.width = "275px";
+    messageDiv.style.width = "fit-content";
     messageDiv.style.height = "30px";
     messageDiv.style.fontSize = "24px";
     messageDiv.style.textAlign = "center";
@@ -395,13 +395,21 @@ function connectToServer() {
             if (message.type == "game_won") {
                 console.log("Game over");
                 gameOver(message.player_id);
-                showMessage("Game Over", 4000);
+                let gameOverMessage = "game winner; " + message.player_id;
+                showMessage(gameOverMessage, 4000);
             }
             if (message.type == "player_destroyed") {
                 destroyPlayer(message.player_id);
             }
             if (message.type == "message") {
                 showMessage(message.message, message.duration);
+            }
+            if (message.type == "game_starting") {
+                showMessage("Game Starting", 2000);
+            }
+            if (message.type == "game_started") {
+                console.log("Game Started");
+                showMessage("Game Started", 1000)
             }
 
         }
