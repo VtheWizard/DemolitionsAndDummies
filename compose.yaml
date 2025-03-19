@@ -1,0 +1,13 @@
+services:
+  backend:
+    build: ./BackEnd
+    ports:
+      - 8080:8080
+
+  frontend:
+    build: ./FrontEnd
+    ports:
+      - 80:80
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+

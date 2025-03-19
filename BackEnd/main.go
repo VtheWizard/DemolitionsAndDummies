@@ -566,7 +566,8 @@ func abs(x int) int {
 }
 
 func main() {
+	addr := "0.0.0.0" + ":" + "8080"
 	http.HandleFunc("/ws", handleConnection)
-	log.Println("WebSocket server started at ws://127.0.0.1:8080/ws")
-	log.Fatal(http.ListenAndServe("127.0.0.1:8080", nil))
+	log.Printf("WebSocket server started at ws://%s/ws\n", addr)
+	log.Fatal(http.ListenAndServe(addr, nil))
 }

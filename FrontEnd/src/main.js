@@ -370,7 +370,7 @@ function gameOver(winner) {
 
 function connectToServer() {
     if (!connectionToServer){
-        socket = new WebSocket('ws://127.0.0.1:8080/ws');
+        socket = new WebSocket("ws://" + window.location.host + "/ws");
         console.log('attempting to connect to server on port ' + socket);
         socket.onopen = () => {
             console.log('connection established');
