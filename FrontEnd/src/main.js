@@ -305,16 +305,17 @@ function wrongMove(wrongPosition) {
 }
 
 function destroyPlayer(playerIDs) {
-    for (let playerID in playerIDs) {
-        if (playerID === myPlayerID){
-            console.log("Player " + playerID + " has been destroyed");
-            app.stage.removeChild(playerList[playerID]);
-            delete playerList[playerID];
+    for (let i = 0; i < playerIDs.length; i++){
+        if (playerIDs[i] === myPlayerID){
+            console.log("Player " + playerIDs[i] + " has been destroyed");
+            app.stage.removeChild(playerList[playerIDs[i]]);
+            delete playerList[playerIDs[i]];
+            showMessage("You DIED!!!", 2000);
             //gameOver(playerID);
         } else {
-            console.log("Player " + playerID + " has been destroyed");
-            app.stage.removeChild(playerList[playerID]);
-            delete playerList[playerID];
+            console.log("Player " + playerIDs[i] + " has been destroyed");
+            app.stage.removeChild(playerList[playerIDs[i]]);
+            delete playerList[playerIDs[i]];
         }
     }
 }
