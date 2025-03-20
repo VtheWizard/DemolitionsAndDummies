@@ -419,8 +419,8 @@ function connectToServer() {
                 let gameOverMessage = "No Winners";
                 showMessage(gameOverMessage, 4000);
             }
-            if (message.type == "player_destroyed") {
-                destroyPlayer(message.player_id);
+            if (message.type == "players_hit_NOT_WORKING") { //THIS DOES NOT WORK YET FOR SOME STUPID REASON
+                destroyPlayer(message.player_ids);
             }
             if (message.type == "message") {
                 showMessage(message.message, message.duration);
@@ -495,16 +495,16 @@ function createMenu(){
         playerList[player1ID] = Player1;
         playerList[player2ID] = Player2;
         app.stage.removeChild(menuContainer);
-        document.body.removeChild(nameInput);
+        //document.body.removeChild(nameInput);
         }
     );
     const onlineButton = createButton("Online Multiplayer", app.renderer.width / 10, app.renderer.height / 4 + 60, () => {
             connectToServer();
             app.stage.addChild(Player1);
             Player1.position.set(10,10);
-            playerName = nameInput.value.trim();
+            //playerName = nameInput.value.trim();
             console.log("player name: ",playerName);
-            document.body.removeChild(nameInput);
+            //document.body.removeChild(nameInput);
             app.stage.removeChild(menuContainer);
             deleteGrid();
         }
