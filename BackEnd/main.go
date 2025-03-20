@@ -14,7 +14,7 @@ import (
 const (
 	rows       = 11
 	cols       = 11
-	maxPlayers = 2 // 2 for easier testing
+	maxPlayers = 4
 )
 
 type GridMessage struct {
