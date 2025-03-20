@@ -145,7 +145,7 @@ window.addEventListener("keydown", (event)=>{
 });
 
 window.addEventListener("keyup", (event)=>{
-    //player 1 on arrows and player 2 on wasd, bomb drops are on p and v keys respectively
+    //player 1 on arrows and player 2 on wasd, bomb drops are on space and v keys respectively
     switch (event.key) {
         case "ArrowUp": p1velocityY = 0;        break;
         case "ArrowDown": p1velocityY = 0;      break;
@@ -512,6 +512,7 @@ function createMenu(){
     menuContainer.addChild(localButton);
     menuContainer.addChild(onlineButton);
 
+    /* //commented out due to server not sending nicknames yet
     const nameInput = document.createElement("input");
     nameInput.type = "text";
     nameInput.placeholder = "Enter your name";
@@ -530,7 +531,7 @@ function createMenu(){
     nameInput.style.outline = "none";
     nameInput.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.5)";
     nameInput.style.zIndex = "10000";
-    document.body.appendChild(nameInput);
+    document.body.appendChild(nameInput);*/
 
 }
 createMenu();
