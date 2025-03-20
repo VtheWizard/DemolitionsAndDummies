@@ -304,14 +304,18 @@ function wrongMove(wrongPosition) {
     Player1.position.set(wrongPosition[1] * onlineCellSize - playerOffset, wrongPosition[0] * onlineCellSize - playerOffset);
 }
 
-function destroyPlayer(playerID) {
-    if (playerID === myPlayerID){
-        console.log("Player " + playerID + " has been destroyed");
-        gameOver(playerID);
-    } else {
-        console.log("Player " + playerID + " has been destroyed");
-        app.stage.removeChild(playerList[playerID]);
-        delete playerList[playerID];
+function destroyPlayer(playerIDs) {
+    for (const playerID of playerIDs) {
+        if (playerID === myPlayerID){
+            console.log("Player " + playerID + " has been destroyed");
+            app.stage.removeChild(playerList[playerID]);
+            delete playerList[playerID];
+            //gameOver(playerID);
+        } else {
+            console.log("Player " + playerID + " has been destroyed");
+            app.stage.removeChild(playerList[playerID]);
+            delete playerList[playerID];
+        }
     }
 }
 
@@ -419,7 +423,7 @@ function connectToServer() {
                 let gameOverMessage = "No Winners";
                 showMessage(gameOverMessage, 4000);
             }
-            if (message.type == "players_hit_NOT_WORKING") { //THIS DOES NOT WORK YET FOR SOME STUPID REASON
+            if (message.type == "players_hit") { 
                 destroyPlayer(message.player_ids);
             }
             if (message.type == "message") {
