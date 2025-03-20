@@ -305,7 +305,7 @@ function wrongMove(wrongPosition) {
 }
 
 function destroyPlayer(playerIDs) {
-    for (const playerID of playerIDs) {
+    for (let playerID in playerIDs) {
         if (playerID === myPlayerID){
             console.log("Player " + playerID + " has been destroyed");
             app.stage.removeChild(playerList[playerID]);
@@ -317,6 +317,12 @@ function destroyPlayer(playerIDs) {
             delete playerList[playerID];
         }
     }
+}
+
+function playerDisconnected(playerID) {
+    console.log("Player " + playerID + " has disconnected");
+    app.stage.removeChild(playerList[playerID]);
+    delete playerList[playerID];
 }
 
 function showMessage(message, duration) {
@@ -425,6 +431,9 @@ function connectToServer() {
             }
             if (message.type == "players_hit") { 
                 destroyPlayer(message.player_ids);
+            }
+            if (message.type == "player_disconnected") {
+                playerDisconnected(message.player_id);
             }
             if (message.type == "message") {
                 showMessage(message.message, message.duration);
