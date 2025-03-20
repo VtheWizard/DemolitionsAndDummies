@@ -21,6 +21,7 @@ const gridSpriteSize = 50;
 const onlineCellSize = 40;
 const gridSize = 11;
 const playerSize = 30;
+const playerOffset = playerSize/2;
 const maxHeight = gridSize * (gridSpriteSize + 1);
 const maxWidht = gridSize * (gridSpriteSize + 1);
 const gridTexture = await Assets.load('/images/gridSpritePng.png');
@@ -144,7 +145,7 @@ window.addEventListener("keydown", (event)=>{
 });
 
 window.addEventListener("keyup", (event)=>{
-    //player 1 on arrows and player 2 on wasd, bomb drops are on p and v keys respectively
+    //player 1 on arrows and player 2 on wasd, bomb drops are on space and v keys respectively
     switch (event.key) {
         case "ArrowUp": p1velocityY = 0;        break;
         case "ArrowDown": p1velocityY = 0;      break;
@@ -194,8 +195,8 @@ function localPlayerBombDrop(playerNumber) {
     let snappedX = 0;
     let snappedY = 0;
     if (playerNumber === 1) {
-        let playerX = Player1.x;
-        let playerY = Player1.y;
+        let playerX = Player1.x + playerOffset;
+        let playerY = Player1.y + playerOffset;
         if (!connectionToServer) {
             snappedX = Math.round(playerX / gridSpriteSize) * gridSpriteSize + gridSpriteSize / 2;
             snappedY = Math.round(playerY / gridSpriteSize) * gridSpriteSize + gridSpriteSize / 2;            
@@ -212,8 +213,8 @@ function localPlayerBombDrop(playerNumber) {
             //return; //commented out while not recieving bomb drop message from server
         }
     } else {
-        let playerX = Player2.x;
-        let playerY = Player2.y;
+        let playerX = Player2.x + playerOffset;
+        let playerY = Player2.y + playerOffset;
         if (connectionToServer === false) {
             snappedX = Math.round(playerX / gridSpriteSize) * gridSpriteSize + gridSpriteSize / 2;
             snappedY = Math.round(playerY / gridSpriteSize) * gridSpriteSize + gridSpriteSize / 2;
@@ -290,7 +291,7 @@ function spawnPlayer(playerID, playerPosition) {
 
 function movePlayer(playerID, newPosition) {
     if (playerID !== myPlayerID){
-        playerList[playerID].position.set(newPosition[1] * onlineCellSize, newPosition[0] * onlineCellSize);
+        playerList[playerID].position.set(newPosition[1] * onlineCellSize - playerOffset, newPosition[0] * onlineCellSize - playerOffset);
         //add player name just a bit above the player position
     }
 }
@@ -300,7 +301,7 @@ function setNick(playerID, Nick) {
 }
 
 function wrongMove(wrongPosition) {
-    Player1.position.set(wrongPosition[1] * onlineCellSize, wrongPosition[0] * onlineCellSize);
+    Player1.position.set(wrongPosition[1] * onlineCellSize - playerOffset, wrongPosition[0] * onlineCellSize - playerOffset);
 }
 
 function destroyPlayer(playerID) {
@@ -511,6 +512,7 @@ function createMenu(){
     menuContainer.addChild(localButton);
     menuContainer.addChild(onlineButton);
 
+    /* //commented out due to server not sending nicknames yet
     const nameInput = document.createElement("input");
     nameInput.type = "text";
     nameInput.placeholder = "Enter your name";
@@ -529,7 +531,7 @@ function createMenu(){
     nameInput.style.outline = "none";
     nameInput.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.5)";
     nameInput.style.zIndex = "10000";
-    document.body.appendChild(nameInput);
+    document.body.appendChild(nameInput);*/
 
 }
 createMenu();
@@ -660,8 +662,8 @@ app.ticker.add(() => {
     }
 
     //checking if player1 moved to another cell
-    let p1Row = ((Player1.y) / onlineCellSize); //remove Math.round when server can handle floats
-    let p1Col = ((Player1.x) / onlineCellSize);
+    let p1Row = ((Player1.y + playerOffset) / onlineCellSize); 
+    let p1Col = ((Player1.x + playerOffset) / onlineCellSize);
 
     if (connectionToServer !==false) {
         if (p1Row !== lastSentPosition.row || p1Col !== lastSentPosition.col){
