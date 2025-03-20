@@ -152,11 +152,13 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	startGameWhenFull(room, roomID)
 
 	defer func() {
+		broadcastPlayerDisconnect(room, conn)
 		room.Mutex.Lock()
 		delete(room.Players, conn)
 		isEmpty := len(room.Players) == 0
 		room.Mutex.Unlock()
 		conn.Close()
+		checkGameEnd(room, len(room.Players))
 
 		if isEmpty {
 			removeRoom(roomID)
@@ -172,6 +174,19 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Received data from %s: %s (size: %d bytes)\n", conn.RemoteAddr(), string(p), len(p))
 		handleMessage(conn, room, p)
 	}
+}
+
+func broadcastPlayerDisconnect(room *GameRoom, conn *websocket.Conn) {
+	playerID := fmt.Sprintf("%p", conn)
+	disconnectMessage := struct {
+		Type     string `json:"type"`
+		PlayerID string `json:"player_id"`
+	}{
+		Type:     "player_disconnected",
+		PlayerID: playerID,
+	}
+	broadcastToRoom(room, disconnectMessage)
+	log.Printf("Player %s disconnected\n", playerID)
 }
 
 func removeRoom(roomID string) {
@@ -405,7 +420,6 @@ func checkPlayersHit(room *GameRoom, bombPos [2]int) {
 			hitPlayers = append(hitPlayers, fmt.Sprintf("%p", playerConn))
 		}
 	}
-	remainingPlayers := len(room.Players)
 	room.Mutex.Unlock()
 
 	if len(hitPlayers) > 0 {
@@ -419,6 +433,10 @@ func checkPlayersHit(room *GameRoom, bombPos [2]int) {
 		broadcastToRoom(room, hitPlayersMessage)
 	}
 
+	checkGameEnd(room, len(room.Players))
+}
+
+func checkGameEnd(room *GameRoom, remainingPlayers int) {
 	if remainingPlayers == 1 {
 		var winnerConn *websocket.Conn
 		for playerConn := range room.Players {
@@ -454,6 +472,8 @@ func destroyWalls(room *GameRoom, pos [2]int) {
 		if newX >= 0 && newX < len(room.Grid) && newY >= 0 && newY < len(room.Grid[0]) {
 			if room.Grid[newX][newY] == 1 {
 				room.Grid[newX][newY] = 0
+			}
+			if room.Grid[newX][newY] != 2 {
 				destroyedCells = append(destroyedCells, [2]int{newX, newY})
 			}
 		}
