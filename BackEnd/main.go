@@ -158,6 +158,7 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 		isEmpty := len(room.Players) == 0
 		room.Mutex.Unlock()
 		conn.Close()
+		checkGameEnd(room, len(room.Players))
 
 		if isEmpty {
 			removeRoom(roomID)
@@ -419,7 +420,6 @@ func checkPlayersHit(room *GameRoom, bombPos [2]int) {
 			hitPlayers = append(hitPlayers, fmt.Sprintf("%p", playerConn))
 		}
 	}
-	remainingPlayers := len(room.Players)
 	room.Mutex.Unlock()
 
 	if len(hitPlayers) > 0 {
@@ -433,6 +433,10 @@ func checkPlayersHit(room *GameRoom, bombPos [2]int) {
 		broadcastToRoom(room, hitPlayersMessage)
 	}
 
+	checkGameEnd(room, len(room.Players))
+}
+
+func checkGameEnd(room *GameRoom, remainingPlayers int) {
 	if remainingPlayers == 1 {
 		var winnerConn *websocket.Conn
 		for playerConn := range room.Players {
