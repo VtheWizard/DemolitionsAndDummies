@@ -75,6 +75,11 @@
   "type": "moved_wrongly",
   "playerPosition": [ 1, 0 ] 
 }
+
+{ 
+  "type": "player_disconnected",
+  "player_id": "0xc0000c62c0"
+}
 ​
 
 ```
